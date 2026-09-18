@@ -3,6 +3,7 @@ const path = require("path");
 const { dialog, ipcMain, shell } = require("electron");
 const { getAudioFilesRecursive, parseTracks, hashString } = require("./scanner.cjs");
 const { readPlaylists, savePlaylist, deletePlaylist } = require("./playlists.cjs");
+const { searchOnlineTracks, getAudioStreamUrl } = require("./streamingService.cjs");
 
 function registerIpcHandlers({
   getMainWindow,
@@ -101,21 +102,6 @@ function registerIpcHandlers({
     return win ? win.isMaximized() : false;
   });
 
-  ipcMain.handle("window:toggleFullScreen", () => {
-    const win = getMainWindow();
-    if (win) {
-      const nextState = !win.isFullScreen();
-      win.setFullScreen(nextState);
-      return nextState;
-    }
-    return false;
-  });
-
-  ipcMain.handle("window:isFullScreen", () => {
-    const win = getMainWindow();
-    return win ? win.isFullScreen() : false;
-  });
-
   // 5. System File Explorer
   ipcMain.handle("system:showItemInFolder", (_event, fullPath) => {
     if (fs.existsSync(fullPath)) {
@@ -156,7 +142,15 @@ function registerIpcHandlers({
     return null;
   });
 
-  // 7. Downloaders
+  // 7. Online Search & Streaming Audio Resolution
+  ipcMain.handle("streaming:search", async (_event, query) => {
+    return searchOnlineTracks(query);
+  });
+
+  ipcMain.handle("streaming:getAudioUrl", async (_event, videoId) => {
+    return getAudioStreamUrl(videoId);
+  });
+
   ipcMain.handle("metadata:fetchStatic", async () => {
     if (!fs.existsSync(dbFilePath)) return null;
     try {

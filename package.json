@@ -17,7 +17,8 @@
     "hls.js": "^1.7.3",
     "music-metadata": "^11.15.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "youtubei.js": "^18.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

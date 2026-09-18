@@ -9,6 +9,7 @@ import './styles/now-playing.css';
 import './styles/detail-views.css';
 import './styles/playlists.css';
 import './styles/context-menu.css';
+import './styles/search.css';
 
 import type { NavigationTab, LibraryData, Album, Artist, Playlist, Song } from './types/music';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
@@ -158,7 +159,14 @@ export function App() {
               />
             ) : (
               <>
-                {currentTab === 'search' && <SearchPage />}
+                {currentTab === 'search' && (
+                <SearchPage
+                  library={library}
+                  onPlaySong={(song, list) => player.playSong(song, list || library.songs)}
+                  onSelectAlbum={handleOpenAlbum}
+                  onSelectArtist={(artist) => setSelectedArtist(artist)}
+                />
+              )}
                 {currentTab === 'home' && (
                 <HomePage
                   library={library}

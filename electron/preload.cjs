@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   selectAndScanFolder: () => ipcRenderer.invoke("dialog:selectAndScanFolder"),
   getLibrary: () => ipcRenderer.invoke("db:getLibrary"),
   getLyrics: (song) => ipcRenderer.invoke("lyrics:getLyrics", song),
+  searchOnline: (query) => ipcRenderer.invoke("streaming:search", query),
+  getStreamUrl: (videoId) => ipcRenderer.invoke("streaming:getAudioUrl", videoId),
 
   // Window Controls
   minimizeWindow: () => ipcRenderer.send("window:minimize"),

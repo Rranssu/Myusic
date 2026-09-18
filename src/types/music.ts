@@ -12,11 +12,13 @@ export interface LyricsData {
 
 export interface Song {
   id: string;
-  filePath: string;
+  filePath?: string;
+  streamUrl?: string;
+  source?: 'local' | 'streaming';
   title: string;
   artist: string;
   album: string;
-  duration: number; // in seconds
+  duration: number;
   trackNumber?: number;
   year?: number;
   artworkUrl?: string;
@@ -64,6 +66,7 @@ export interface LibraryData {
 }
 
 // Global Electron API Definition for React
+// Global Electron API Definition for React
 declare global {
   interface Window {
     electronAPI?: {
@@ -80,12 +83,14 @@ declare global {
       toggleFullScreen: () => Promise<boolean>;
       isFullScreen: () => Promise<boolean>;
 
-      // Downloader Methods
+      // Downloader & Streaming Methods
       fetchStaticMetadata: () => Promise<LibraryData | null>;
       fetchAnimatedMetadata: () => Promise<LibraryData | null>;
       fetchArtistMetadata: () => Promise<LibraryData | null>;
       fetchLyricsMetadata: () => Promise<{ success: boolean; count: number } | null>;
       fetchForAlbum: (artist: string, album: string) => Promise<LibraryData | null>;
+      searchOnline: (query: string) => Promise<Song[]>;
+      getStreamUrl: (videoId: string) => Promise<string | null>; // <--- Add this line
 
       // Playlists
       getPlaylists: () => Promise<Playlist[]>;

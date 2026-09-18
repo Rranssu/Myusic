@@ -1,0 +1,121 @@
+/* =========================================
+   Search Page & Genre Discovery Styling
+========================================= */
+.search-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.search-header-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 680px;
+}
+
+.search-input-large-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 14px 22px;
+  gap: 14px;
+  backdrop-filter: blur(20px);
+  transition: border-color var(--transition-fast);
+}
+
+.search-input-large-wrapper:focus-within {
+  border-color: var(--accent-primary);
+}
+
+.search-input-large-wrapper input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 1.15rem;
+  width: 100%;
+}
+
+.search-input-large-wrapper input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Scope Switcher Pills */
+.search-scope-switcher {
+  display: flex;
+  gap: 10px;
+}
+
+.scope-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 7px 18px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.scope-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.scope-pill.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+/* Genre Discovery Grid */
+.genres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.genre-card {
+  height: 110px;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform var(--transition-normal), filter var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.genre-card:hover {
+  transform: translateY(-4px);
+  filter: brightness(1.1);
+}
+
+.genre-card h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff !important;
+  z-index: 1;
+}
+
+/* Search Results Layout */
+.search-results-container {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.search-results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
