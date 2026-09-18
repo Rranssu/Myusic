@@ -111,7 +111,7 @@
   z-index: 50;
   
   /* Snappy popover entrance */
-  animation: popIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: popIn 1.0s cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-origin: bottom center;
 }
 

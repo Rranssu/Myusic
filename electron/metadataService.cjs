@@ -40,7 +40,7 @@ class MetadataService {
 
       let localArtworkUrl = null;
       if (highResArtUrl) {
-        const albumSlug = Buffer.from(`${artist}-${album}`).toString("base64").replace(/[/+=]/g, "").slice(0, 20);
+        const albumSlug = require("crypto").createHash("md5").update(`${artist}-${album}`).digest("hex");
         const fileName = `${albumSlug}.jpg`;
         const diskPath = path.join(this.artworkCacheDir, fileName);
 
@@ -99,201 +99,6 @@ class MetadataService {
       console.log(`[Description] ℹ️  No description found (${err.message}).`);
       return null;
     }
-  }
-
-  // 3. Fetch Artist Studio Portrait & Biography (Wikipedia + Deezer)
-  async fetchArtistMetadata(artistName) {
-    try {
-      console.log(`[Artist Metadata] 🔍 Searching biography & portrait for "${artistName}"...`);
-      let description = null;
-      let photoUrl = null;
-
-      // A. Query Wikipedia REST API for Biography and Image
-      const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
-      const wikiRes = await fetch(wikiUrl, {
-        headers: { "User-Agent": "Myusic/1.0 ( desktop music player )" }
-      });
-
-      if (wikiRes.ok) {
-        const wikiData = await wikiRes.json();
-        if (wikiData.extract) {
-          description = wikiData.extract;
-          console.log(`[Artist Metadata] 📖 Found Wikipedia biography for "${artistName}"`);
-        }
-        if (wikiData.originalimage?.source || wikiData.thumbnail?.source) {
-          photoUrl = wikiData.originalimage?.source || wikiData.thumbnail?.source;
-          console.log(`[Artist Metadata] 🖼️  Found Wikipedia portrait for "${artistName}"`);
-        }
-      }
-
-      // B. Fallback to Deezer API for high-resolution studio photo if Wikipedia has no image
-      if (!photoUrl) {
-        const deezerUrl = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName)}&limit=1`;
-        const deezerRes = await fetch(deezerUrl);
-        if (deezerRes.ok) {
-          const deezerData = await deezerRes.json();
-          const artist = deezerData?.data?.[0];
-          if (artist && (artist.picture_xl || artist.picture_big)) {
-            photoUrl = artist.picture_xl || artist.picture_big;
-            console.log(`[Artist Metadata] 🖼️  Found Deezer 1000px portrait for "${artistName}"`);
-          }
-        }
-      }
-
-      // Download and cache artist photo locally
-      let localArtworkUrl = null;
-      if (photoUrl) {
-        const artistSlug = Buffer.from(artistName).toString("base64").replace(/[/+=]/g, "").slice(0, 20);
-        const fileName = `artist_${artistSlug}.jpg`;
-        const diskPath = path.join(this.artworkCacheDir, fileName);
-
-        if (!fs.existsSync(diskPath)) {
-          const imgRes = await fetch(photoUrl);
-          if (imgRes.ok) {
-            const buffer = Buffer.from(await imgRes.arrayBuffer());
-            fs.writeFileSync(diskPath, buffer);
-            console.log(`[Artist Metadata] ✅ Saved artist photo to cache: ${fileName}`);
-          }
-        }
-        localArtworkUrl = `atom://artwork/${fileName}`;
-      }
-
-      return {
-        artworkUrl: localArtworkUrl,
-        description
-      };
-    } catch (err) {
-      console.warn(`[Artist Metadata] ⚠️ Failed lookup for ${artistName}:`, err.message);
-      return null;
-    }
-  }
-
-  // 4. Fetch Synced / Unsynced Lyrics (Embedded, Local .lrc, or LRCLIB API)
-  // 4. Fetch Synced / Unsynced Lyrics (Embedded, Local .lrc, or LRCLIB API)
-  async fetchLyrics(song) {
-    try {
-      // A. Check Local .lrc file next to audio file (e.g. song.lrc)
-      const lrcPath = song.filePath.replace(path.extname(song.filePath), ".lrc");
-      if (fs.existsSync(lrcPath)) {
-        console.log(`[Lyrics] 📄 Found local .lrc file on disk for "${song.title}"`);
-        const lrcContent = fs.readFileSync(lrcPath, "utf-8");
-        return this.parseLrc(lrcContent);
-      }
-
-      // B. Query LRCLIB Online API
-      console.log(`[Lyrics] 🔍 Searching online lyrics for: "${song.artist}" — "${song.title}"...`);
-      const artist = encodeURIComponent(song.artist);
-      const title = encodeURIComponent(song.title);
-      const album = encodeURIComponent(song.album || "");
-      const duration = Math.round(song.duration || 0);
-
-      const url = `https://lrclib.net/api/get?artist_name=${artist}&track_name=${title}&album_name=${album}&duration=${duration}`;
-      const res = await fetch(url, {
-        headers: { "User-Agent": "Myusic/1.0 ( desktop music player )" }
-      });
-
-      if (!res.ok) {
-        // Fallback search without strict album/duration matching
-        const searchUrl = `https://lrclib.net/api/search?artist_name=${artist}&track_name=${title}`;
-        const searchRes = await fetch(searchUrl, { headers: { "User-Agent": "Myusic/1.0" } });
-        if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          if (searchData && searchData.length > 0) {
-            const first = searchData[0];
-            if (first.syncedLyrics) {
-              console.log(`[Lyrics] ✨ Found Synced Lyrics (.lrc) for "${song.title}"!`);
-              return this.parseLrc(first.syncedLyrics);
-            }
-            if (first.plainLyrics) {
-              console.log(`[Lyrics] 📝 Found Plain Lyrics for "${song.title}".`);
-              return this.parsePlainText(first.plainLyrics);
-            }
-          }
-        }
-        console.log(`[Lyrics] ℹ️  No online lyrics found for "${song.title}".`);
-        return null;
-      }
-
-      const data = await res.json();
-      if (data.syncedLyrics) {
-        console.log(`[Lyrics] ✨ Found Synced Lyrics (.lrc) for "${song.title}"!`);
-        return this.parseLrc(data.syncedLyrics);
-      } else if (data.plainLyrics) {
-        console.log(`[Lyrics] 📝 Found Plain Lyrics for "${song.title}".`);
-        return this.parsePlainText(data.plainLyrics);
-      }
-
-      return null;
-    } catch (err) {
-      console.log(`[Lyrics] ⚠️ Could not fetch lyrics for "${song.title}":`, err.message);
-      return null;
-    }
-  }
-
-  // Parses [mm:ss.xx] timestamped lines
-  parseLrc(lrcString) {
-    const lines = [];
-    const rawLines = lrcString.split("\n");
-    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
-
-    for (const raw of rawLines) {
-      const match = raw.match(timeRegex);
-      if (match) {
-        const min = parseInt(match[1], 10);
-        const sec = parseInt(match[2], 10);
-        const ms = parseFloat("0." + match[3]);
-        const totalSeconds = min * 60 + sec + ms;
-        const text = raw.replace(timeRegex, "").trim();
-
-        if (text.length > 0) {
-          lines.push({ time: totalSeconds, text });
-        }
-      }
-    }
-
-    if (lines.length > 0) {
-      return { isSynced: true, lines };
-    }
-    return this.parsePlainText(lrcString);
-  }
-
-  parsePlainText(plainString) {
-    const rawLines = plainString.split("\n").map(l => l.trim()).filter(Boolean);
-    const lines = rawLines.map(text => ({ time: -1, text }));
-    return { isSynced: false, lines };
-  }
-
-  // Parses [mm:ss.xx] timestamped lines
-  parseLrc(lrcString) {
-    const lines = [];
-    const rawLines = lrcString.split("\n");
-    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
-
-    for (const raw of rawLines) {
-      const match = raw.match(timeRegex);
-      if (match) {
-        const min = parseInt(match[1], 10);
-        const sec = parseInt(match[2], 10);
-        const ms = parseFloat("0." + match[3]);
-        const totalSeconds = min * 60 + sec + ms;
-        const text = raw.replace(timeRegex, "").trim();
-
-        if (text.length > 0) {
-          lines.push({ time: totalSeconds, text });
-        }
-      }
-    }
-
-    if (lines.length > 0) {
-      return { isSynced: true, lines };
-    }
-    return this.parsePlainText(lrcString);
-  }
-
-  parsePlainText(plainString) {
-    const rawLines = plainString.split("\n").map(l => l.trim()).filter(Boolean);
-    const lines = rawLines.map(text => ({ time: -1, text }));
-    return { isSynced: false, lines };
   }
 
   extractVideoUrl(data) {
@@ -434,7 +239,7 @@ class MetadataService {
 
       console.log(`[Animated Art] ✨ Found animated stream URL: ${videoUrl}`);
 
-      const albumSlug = Buffer.from(`${artist}-${album}`).toString("base64").replace(/[/+=]/g, "").slice(0, 20);
+      const albumSlug = require("crypto").createHash("md5").update(`${artist}-${album}`).digest("hex");
       const fileName = `${albumSlug}.mp4`;
       const diskPath = path.join(this.animatedCacheDir, fileName);
 
@@ -468,6 +273,160 @@ class MetadataService {
     }
   }
 
+  // 4. Fetch Artist Studio Portrait & Biography (Wikipedia + Deezer)
+  async fetchArtistMetadata(artistName) {
+    try {
+      console.log(`[Artist Metadata] 🔍 Searching biography & portrait for "${artistName}"...`);
+      let description = null;
+      let photoUrl = null;
+
+      const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
+      const wikiRes = await fetch(wikiUrl, {
+        headers: { "User-Agent": "Myusic/1.0 ( desktop music player )" }
+      });
+
+      if (wikiRes.ok) {
+        const wikiData = await wikiRes.json();
+        if (wikiData.extract) {
+          description = wikiData.extract;
+          console.log(`[Artist Metadata] 📖 Found Wikipedia biography for "${artistName}"`);
+        }
+        if (wikiData.originalimage?.source || wikiData.thumbnail?.source) {
+          photoUrl = wikiData.originalimage?.source || wikiData.thumbnail?.source;
+          console.log(`[Artist Metadata] 🖼️  Found Wikipedia portrait for "${artistName}"`);
+        }
+      }
+
+      if (!photoUrl) {
+        const deezerUrl = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName)}&limit=1`;
+        const deezerRes = await fetch(deezerUrl);
+        if (deezerRes.ok) {
+          const deezerData = await deezerRes.json();
+          const artist = deezerData?.data?.[0];
+          if (artist && (artist.picture_xl || artist.picture_big)) {
+            photoUrl = artist.picture_xl || artist.picture_big;
+            console.log(`[Artist Metadata] 🖼️  Found Deezer 1000px portrait for "${artistName}"`);
+          }
+        }
+      }
+
+      let localArtworkUrl = null;
+      if (photoUrl) {
+        const artistSlug = require("crypto").createHash("md5").update(artistName).digest("hex");
+        const fileName = `artist_${artistSlug}.jpg`;
+        const diskPath = path.join(this.artworkCacheDir, fileName);
+
+        if (!fs.existsSync(diskPath)) {
+          const imgRes = await fetch(photoUrl);
+          if (imgRes.ok) {
+            const buffer = Buffer.from(await imgRes.arrayBuffer());
+            fs.writeFileSync(diskPath, buffer);
+            console.log(`[Artist Metadata] ✅ Saved artist photo to cache: ${fileName}`);
+          }
+        }
+        localArtworkUrl = `atom://artwork/${fileName}`;
+      }
+
+      return {
+        artworkUrl: localArtworkUrl,
+        description
+      };
+    } catch (err) {
+      console.warn(`[Artist Metadata] ⚠️ Failed lookup for ${artistName}:`, err.message);
+      return null;
+    }
+  }
+
+  // 5. Fetch Synced / Unsynced Lyrics (LRCLIB API)
+  async fetchLyrics(song) {
+    try {
+      const lrcPath = song.filePath.replace(path.extname(song.filePath), ".lrc");
+      if (fs.existsSync(lrcPath)) {
+        console.log(`[Lyrics] 📄 Found local .lrc file on disk for "${song.title}"`);
+        const lrcContent = fs.readFileSync(lrcPath, "utf-8");
+        return this.parseLrc(lrcContent);
+      }
+
+      console.log(`[Lyrics] 🔍 Searching online lyrics for: "${song.artist}" — "${song.title}"...`);
+      const artist = encodeURIComponent(song.artist);
+      const title = encodeURIComponent(song.title);
+      const album = encodeURIComponent(song.album || "");
+      const duration = Math.round(song.duration || 0);
+
+      const url = `https://lrclib.net/api/get?artist_name=${artist}&track_name=${title}&album_name=${album}&duration=${duration}`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Myusic/1.0 ( desktop music player )" }
+      });
+
+      if (!res.ok) {
+        const searchUrl = `https://lrclib.net/api/search?artist_name=${artist}&track_name=${title}`;
+        const searchRes = await fetch(searchUrl, { headers: { "User-Agent": "Myusic/1.0" } });
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          if (searchData && searchData.length > 0) {
+            const first = searchData[0];
+            if (first.syncedLyrics) {
+              console.log(`[Lyrics] ✨ Found Synced Lyrics (.lrc) for "${song.title}"!`);
+              return this.parseLrc(first.syncedLyrics);
+            }
+            if (first.plainLyrics) {
+              console.log(`[Lyrics] 📝 Found Plain Lyrics for "${song.title}".`);
+              return this.parsePlainText(first.plainLyrics);
+            }
+          }
+        }
+        console.log(`[Lyrics] ℹ️  No online lyrics found for "${song.title}".`);
+        return null;
+      }
+
+      const data = await res.json();
+      if (data.syncedLyrics) {
+        console.log(`[Lyrics] ✨ Found Synced Lyrics (.lrc) for "${song.title}"!`);
+        return this.parseLrc(data.syncedLyrics);
+      } else if (data.plainLyrics) {
+        console.log(`[Lyrics] 📝 Found Plain Lyrics for "${song.title}".`);
+        return this.parsePlainText(data.plainLyrics);
+      }
+
+      return null;
+    } catch (err) {
+      console.log(`[Lyrics] ⚠️ Could not fetch lyrics for "${song.title}":`, err.message);
+      return null;
+    }
+  }
+
+  parseLrc(lrcString) {
+    const lines = [];
+    const rawLines = lrcString.split("\n");
+    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+
+    for (const raw of rawLines) {
+      const match = raw.match(timeRegex);
+      if (match) {
+        const min = parseInt(match[1], 10);
+        const sec = parseInt(match[2], 10);
+        const ms = parseFloat("0." + match[3]);
+        const totalSeconds = min * 60 + sec + ms;
+        const text = raw.replace(timeRegex, "").trim();
+
+        if (text.length > 0) {
+          lines.push({ time: totalSeconds, text });
+        }
+      }
+    }
+
+    if (lines.length > 0) {
+      return { isSynced: true, lines };
+    }
+    return this.parsePlainText(lrcString);
+  }
+
+  parsePlainText(plainString) {
+    const rawLines = plainString.split("\n").map(l => l.trim()).filter(Boolean);
+    const lines = rawLines.map(text => ({ time: -1, text }));
+    return { isSynced: false, lines };
+  }
+
   async resolveAlbum(artist, album) {
     const staticData = await this.fetchStaticMetadata(artist, album);
     const animatedUrl = await this.fetchAnimatedArtwork(artist, album);
@@ -481,9 +440,6 @@ class MetadataService {
       description: description || null
     };
   }
-  
 }
-
-
 
 module.exports = { MetadataService };

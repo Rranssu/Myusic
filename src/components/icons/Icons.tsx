@@ -173,3 +173,55 @@ export const ArrowLeftIcon: React.FC<IconProps> = ({ size = 18, color = 'current
     <polyline points="12 19 5 12 12 5" />
   </svg>
 );
+
+// ==========================================
+// Audio Quality Logos
+// ==========================================
+
+export const LosslessLogo: React.FC<IconProps> = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size * 3.5} height={size} viewBox="0 0 56 16" fill="none">
+    <rect x="0.5" y="0.5" width="55" height="15" rx="3.5" stroke={color} strokeWidth="1"/>
+    {/* Equalizer Wave */}
+    <rect x="14" y="6" width="1.5" height="4" rx="0.5" fill={color} />
+    <rect x="17" y="4" width="1.5" height="8" rx="0.5" fill={color} />
+    <rect x="20" y="2" width="1.5" height="12" rx="0.5" fill={color} />
+    <rect x="23" y="5" width="1.5" height="6" rx="0.5" fill={color} />
+    <rect x="26" y="3" width="1.5" height="10" rx="0.5" fill={color} />
+    <rect x="29" y="6" width="1.5" height="4" rx="0.5" fill={color} />
+    <text x="34" y="11.5" fill={color} fontSize="8" fontWeight="800" fontFamily="sans-serif" letterSpacing="0.5">ALAC</text>
+  </svg>
+);
+
+export const FlacLogo: React.FC<IconProps> = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size * 3.5} height={size} viewBox="0 0 56 16" fill="none">
+    <rect x="0.5" y="0.5" width="55" height="15" rx="3.5" stroke={color} strokeWidth="1"/>
+    <rect x="14" y="6" width="1.5" height="4" rx="0.5" fill={color} />
+    <rect x="17" y="4" width="1.5" height="8" rx="0.5" fill={color} />
+    <rect x="20" y="2" width="1.5" height="12" rx="0.5" fill={color} />
+    <rect x="23" y="5" width="1.5" height="6" rx="0.5" fill={color} />
+    <rect x="26" y="3" width="1.5" height="10" rx="0.5" fill={color} />
+    <rect x="29" y="6" width="1.5" height="4" rx="0.5" fill={color} />
+    <text x="34" y="11.5" fill={color} fontSize="8" fontWeight="800" fontFamily="sans-serif" letterSpacing="0.5">FLAC</text>
+  </svg>
+);
+
+export const Mp3Logo: React.FC<IconProps> = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size * 2.2} height={size} viewBox="0 0 36 16" fill="none">
+    <rect x="0.5" y="0.5" width="35" height="15" rx="3.5" stroke={color} strokeWidth="1"/>
+    <text x="50%" y="11.5" fill={color} fontSize="9" fontWeight="800" fontFamily="sans-serif" letterSpacing="0.5" textAnchor="middle">MP3</text>
+  </svg>
+);
+
+export const AacLogo: React.FC<IconProps> = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size * 2.2} height={size} viewBox="0 0 36 16" fill="none">
+    <rect x="0.5" y="0.5" width="35" height="15" rx="3.5" stroke={color} strokeWidth="1"/>
+    <text x="50%" y="11.5" fill={color} fontSize="9" fontWeight="800" fontFamily="sans-serif" letterSpacing="0.5" textAnchor="middle">AAC</text>
+  </svg>
+);
+
+export const OggLogo: React.FC<IconProps> = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size * 2.2} height={size} viewBox="0 0 36 16" fill="none">
+    <rect x="0.5" y="0.5" width="35" height="15" rx="3.5" stroke={color} strokeWidth="1"/>
+    <text x="50%" y="11.5" fill={color} fontSize="9" fontWeight="800" fontFamily="sans-serif" letterSpacing="0.5" textAnchor="middle">OGG</text>
+  </svg>
+);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Song, LyricsData } from '../../types/music';
 import type { RepeatMode } from '../../hooks/useAudioPlayer';
 import { extractPaletteFromImage, type Palette } from '../../utils/colorExtractor';
@@ -81,10 +81,6 @@ export function NowPlayingScreen({
   onSeek,
   onVolumeChange,
 }: NowPlayingScreenProps) {
-  // 1. Add Render State for Exit Animation
-  const [shouldRender, setShouldRender] = useState(isOpen);
-  const [isClosing, setIsClosing] = useState(false);
-
   const [isFavorite, setIsFavorite] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('none');
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
@@ -92,9 +88,6 @@ export function NowPlayingScreen({
 
   // Lyrics State
   const [lyrics, setLyrics] = useState<LyricsData | null>(null);
-  const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const activeLyricRef = useRef<HTMLParagraphElement | null>(null);
 
   const [palette, setPalette] = useState<Palette>({
@@ -105,18 +98,7 @@ export function NowPlayingScreen({
     glowSecondary: "rgba(110, 60, 230, 0.65)"
   });
 
-  // Handle Exit Animation Lifecycle
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      setIsClosing(false);
-    } else if (shouldRender) {
-      setIsClosing(true);
-      // Wait for CSS slide-down animation to finish (400ms) before unmounting
-      setTimeout(() => setShouldRender(false), 400);
-    }
-  }, [isOpen, shouldRender]);
-
+  // Reset video error state whenever song or animated URL changes
   useEffect(() => {
     setVideoError(false);
   }, [currentSong?.id, currentSong?.animatedArtworkUrl]);
@@ -138,11 +120,8 @@ export function NowPlayingScreen({
     }
 
     if (window.electronAPI?.getLyrics) {
-      setIsLoadingLyrics(true);
       window.electronAPI.getLyrics(currentSong).then((data) => {
         setLyrics(data);
-        setIsLoadingLyrics(false);
-        // If current track has no lyrics and lyrics view was open, collapse to center mode
         if ((!data || data.lines.length === 0) && sidePanel === 'lyrics') {
           setSidePanel('none');
         }
@@ -160,8 +139,7 @@ export function NowPlayingScreen({
     }
   }, [currentTime, sidePanel, lyrics?.isSynced]);
 
-  // Prevent rendering entirely if fully closed
-  if (!shouldRender) return null;
+  if (!isOpen) return null;
 
   const effectiveDuration = duration > 0 ? duration : (currentSong?.duration || 0);
   const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.max(0, (currentTime / effectiveDuration) * 100)) : 0;
@@ -169,10 +147,10 @@ export function NowPlayingScreen({
   const qualityBadge = getAudioBadge(currentSong?.filePath);
 
   const hasLyrics = lyrics !== null && lyrics.lines && lyrics.lines.length > 0;
+  const animatedUrl = currentSong?.animatedArtworkUrl;
 
-  // Toggle handlers
   const handleToggleLyrics = () => {
-    if (!hasLyrics) return; // Prevent interaction when no lyrics exist
+    if (!hasLyrics) return;
     setSidePanel((prev) => (prev === 'lyrics' ? 'none' : 'lyrics'));
   };
 
@@ -182,7 +160,6 @@ export function NowPlayingScreen({
 
   const upcomingQueue = queue.slice(queueIndex + 1);
 
-  // Find active line index in synced mode
   let activeLyricIndex = -1;
   if (lyrics?.isSynced && lyrics.lines) {
     for (let i = 0; i < lyrics.lines.length; i++) {
@@ -198,10 +175,6 @@ export function NowPlayingScreen({
     <div
       className="now-playing-overlay"
       style={{
-        // Add exit animation transform when closing
-        transform: isClosing ? 'translateY(100%) scale(0.95)' : 'translateY(0) scale(1)',
-        opacity: isClosing ? 0 : 1,
-        transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease',
         background: `radial-gradient(circle at 25% 35%, ${palette.glowPrimary} 0%, transparent 60%),
                      radial-gradient(circle at 75% 65%, ${palette.glowSecondary} 0%, transparent 60%),
                      #09090d`
@@ -252,58 +225,35 @@ export function NowPlayingScreen({
               boxShadow: `0 24px 60px -10px rgba(0, 0, 0, 0.8), 0 0 40px ${palette.glowPrimary}`
             }}
           >
-            {/* Guaranteed Static Cover Underneath */}
-            {currentSong?.artworkUrl ? (
-              <img
-                src={currentSong.artworkUrl}
-                alt={currentSong.title}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  zIndex: 1
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1
-                }}
-              >
-                <AlbumsIcon size={100} color="rgba(255, 255, 255, 0.3)" />
-              </div>
-            )}
-
-            {/* Looping Animated Video */}
-            {currentSong?.animatedArtworkUrl && !videoError && (
+            {/* Animated Loop Artwork (Matching AlbumDetailPage working pattern) */}
+            {animatedUrl && !videoError ? (
               <video
-                key={currentSong.animatedArtworkUrl}
-                ref={videoRef}
-                src={currentSong.animatedArtworkUrl}
-                poster={currentSong.artworkUrl}
+                key={animatedUrl}
+                src={animatedUrl}
+                poster={currentSong?.artworkUrl}
                 autoPlay
                 loop
                 muted
                 playsInline
                 style={{
-                  position: 'relative',
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover',
-                  zIndex: 2
-                }}
-                onLoadedData={(e) => {
-                  e.currentTarget.play().catch(() => {});
+                  objectFit: 'cover'
                 }}
                 onError={() => setVideoError(true)}
               />
+            ) : currentSong?.artworkUrl ? (
+              <img
+                src={currentSong.artworkUrl}
+                alt={currentSong.title}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <AlbumsIcon size={100} color="rgba(255, 255, 255, 0.3)" />
             )}
           </div>
 
@@ -407,7 +357,7 @@ export function NowPlayingScreen({
                 <SkipForwardIcon size={24} color="#ffffff" />
               </button>
 
-              {/* 5. Lyrics Toggle (Disabled & Greyed Out If No Lyrics Exist) */}
+              {/* 5. Lyrics Toggle */}
               <button
                 className={`pill-icon-btn ${sidePanel === 'lyrics' ? 'pill-active-accent' : ''} ${!hasLyrics ? 'lyrics-btn-disabled' : ''}`}
                 onClick={handleToggleLyrics}
@@ -436,12 +386,11 @@ export function NowPlayingScreen({
           </div>
         </div>
 
-        {/* Right Side Panel: Lyrics (Synced or Unsynced) */}
+        {/* Right Side Panel: Lyrics */}
         {sidePanel === 'lyrics' && hasLyrics && (
           <div className="now-playing-right">
             <div className="lyrics-stream">
               {lyrics.isSynced ? (
-                // Synced Lyrics View with Interactive Seeking
                 lyrics.lines.map((line, idx) => {
                   const isActive = idx === activeLyricIndex;
                   const isPassed = idx < activeLyricIndex;
@@ -464,7 +413,6 @@ export function NowPlayingScreen({
                   );
                 })
               ) : (
-                // Unsynced Plain Text Lyrics View
                 lyrics.lines.map((line, idx) => (
                   <p key={idx} className="lyric-line unsynced-line">
                     {line.text}

@@ -42,9 +42,9 @@
   --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 
   /* High-Performance Transitions */
-  --transition-fast: 0.15s cubic-bezier(0.2, 0, 0, 1);
-  --transition-normal: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  --transition-slow: 1.2s cubic-bezier(0.25, 1, 0.5, 1); /* For color morphing */
+  --transition-fast: 2.0s cubic-bezier(0.2, 0, 0, 1);
+  --transition-normal: 3.0s cubic-bezier(0.25, 1, 0.5, 1);
+  --transition-slow: 4.0s cubic-bezier(0.25, 1, 0.5, 1); /* For color morphing */
 }
 
 * {

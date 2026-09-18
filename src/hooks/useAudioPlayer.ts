@@ -21,61 +21,33 @@ export function useAudioPlayer() {
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
 
-  useEffect(() => {
-    const audio = new Audio();
-    audio.volume = volume;
-    audioRef.current = audio;
+  // Live refs to prevent stale closure bugs in audio event listeners
+  const queueRef = useRef(queue);
+  queueRef.current = queue;
 
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
+  const queueIndexRef = useRef(queueIndex);
+  queueIndexRef.current = queueIndex;
 
-    const handleLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-        setDuration(audio.duration);
-      }
-    };
+  const isShuffleRef = useRef(isShuffle);
+  isShuffleRef.current = isShuffle;
 
-    const handleEnded = () => {
-      onTrackEnded();
-    };
+  const repeatModeRef = useRef(repeatMode);
+  repeatModeRef.current = repeatMode;
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('durationchange', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.pause();
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('durationchange', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, []);
-
-  const setVolume = (val: number) => {
-    const clamped = Math.max(0, Math.min(1, val));
-    if (audioRef.current) {
-      audioRef.current.volume = clamped;
-    }
-    setVolumeState(clamped);
-    localStorage.setItem('myusic_volume', clamped.toString());
-  };
+  const currentSongRef = useRef(currentSong);
+  currentSongRef.current = currentSong;
 
   const playSong = useCallback(
     (song: Song, songList: Song[] = []) => {
       if (!audioRef.current) return;
 
       const activeQueue = songList.length > 0 ? songList : [song];
-      // Match by exact filePath
       const index = activeQueue.findIndex((s) => s.filePath === song.filePath || s.id === song.id);
 
       setQueue(activeQueue);
       setQueueIndex(index !== -1 ? index : 0);
       setCurrentSong(song);
 
-      // Immediately seed duration from metadata tag so seekbar is ready instantly
       const initialDuration = song.duration > 0 ? song.duration : 0;
       setDuration(initialDuration);
       setCurrentTime(0);
@@ -91,6 +63,80 @@ export function useAudioPlayer() {
     },
     []
   );
+
+  const handleNext = useCallback(() => {
+    const currentQ = queueRef.current;
+    const currentIndex = queueIndexRef.current;
+    const shuffle = isShuffleRef.current;
+    const repeat = repeatModeRef.current;
+    const activeSong = currentSongRef.current;
+
+    if (currentQ.length === 0) return;
+
+    if (repeat === 'one' && activeSong && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+      return;
+    }
+
+    let nextIdx = currentIndex + 1;
+    if (shuffle) {
+      nextIdx = Math.floor(Math.random() * currentQ.length);
+    } else if (nextIdx >= currentQ.length) {
+      if (repeat === 'all') {
+        nextIdx = 0; // Loop back to start of queue
+      } else {
+        setIsPlaying(false);
+        return; // End of queue reached
+      }
+    }
+
+    const nextSong = currentQ[nextIdx];
+    if (nextSong) {
+      playSong(nextSong, currentQ);
+    }
+  }, [playSong]);
+
+  // Initialize audio element and bind events
+  useEffect(() => {
+    const audio = new Audio();
+    audio.volume = volume;
+    audioRef.current = audio;
+
+    audio.ontimeupdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    audio.onloadedmetadata = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+
+    audio.ondurationchange = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+
+    audio.onended = () => {
+      handleNext();
+    };
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, [handleNext]);
+
+  const setVolume = (val: number) => {
+    const clamped = Math.max(0, Math.min(1, val));
+    if (audioRef.current) {
+      audioRef.current.volume = clamped;
+    }
+    setVolumeState(clamped);
+    localStorage.setItem('myusic_volume', clamped.toString());
+  };
 
   const playAlbum = useCallback(
     (album: Album, allSongs: Song[], shuffle = false) => {
@@ -112,7 +158,6 @@ export function useAudioPlayer() {
     [playSong]
   );
 
-  // Insert song immediately after current playing song
   const playNext = useCallback((song: Song) => {
     setQueue((prev) => {
       if (prev.length === 0) return [song];
@@ -123,7 +168,6 @@ export function useAudioPlayer() {
     });
   }, [queueIndex]);
 
-  // Append song to the end of current queue
   const addToQueue = useCallback((song: Song) => {
     setQueue((prev) => [...prev, song]);
   }, []);
@@ -148,33 +192,6 @@ export function useAudioPlayer() {
     setCurrentTime(clamped);
   };
 
-  const handleNext = useCallback(() => {
-    if (queue.length === 0) return;
-
-    if (repeatMode === 'one' && currentSong && audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play();
-      return;
-    }
-
-    let nextIdx = queueIndex + 1;
-    if (isShuffle) {
-      nextIdx = Math.floor(Math.random() * queue.length);
-    } else if (nextIdx >= queue.length) {
-      if (repeatMode === 'all') {
-        nextIdx = 0;
-      } else {
-        setIsPlaying(false);
-        return;
-      }
-    }
-
-    const nextSong = queue[nextIdx];
-    if (nextSong) {
-      playSong(nextSong, queue);
-    }
-  }, [queue, queueIndex, isShuffle, repeatMode, currentSong, playSong]);
-
   const handlePrev = useCallback(() => {
     if (!audioRef.current || queue.length === 0) return;
 
@@ -193,10 +210,6 @@ export function useAudioPlayer() {
       playSong(prevSong, queue);
     }
   }, [queue, queueIndex, playSong]);
-
-  const onTrackEnded = useCallback(() => {
-    handleNext();
-  }, [handleNext]);
 
   const toggleShuffle = () => setIsShuffle((prev) => !prev);
 
@@ -227,7 +240,7 @@ export function useAudioPlayer() {
     handlePrev,
     toggleShuffle,
     toggleRepeat,
-     playNext,
+    playNext,
     addToQueue
   };
 }
