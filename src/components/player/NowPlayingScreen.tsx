@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Song, LyricsData } from '../../types/music';
 import type { RepeatMode } from '../../hooks/useAudioPlayer';
 import { extractPaletteFromImage, type Palette } from '../../utils/colorExtractor';
@@ -11,6 +11,8 @@ import {
   VolumeIcon,
   LyricsIcon,
   QueueIcon,
+  FullScreenIcon,
+  ExitFullScreenIcon,
   StarIcon,
   MoreHorizontalIcon,
   AlbumsIcon
@@ -43,26 +45,76 @@ function formatDuration(sec: number): string {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-function getAudioBadge(filePath?: string): string {
-  if (!filePath) return "Lossless";
-  const ext = filePath.split('.').pop()?.toLowerCase();
+interface AudioBadgeInfo {
+  label: string;
+  icon: React.ReactNode;
+}
+
+function getAudioBadgeInfo(filePath?: string): AudioBadgeInfo {
+  const ext = filePath?.split('.').pop()?.toLowerCase();
+
   switch (ext) {
     case 'flac':
     case 'wav':
     case 'alac':
-      return "Lossless";
+      return {
+        label: "Lossless",
+        icon: (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 10v4M6 6v12M10 3v18M14 7v10M18 5v14M22 10v4" />
+          </svg>
+        )
+      };
     case 'm4a':
     case 'aac':
-      return "AAC";
+      return {
+        label: "High Quality",
+        icon: (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l2.4 7.4h7.6l-6.2 4.5 2.4 7.4-6.2-4.5-6.2 4.5 2.4-7.4-6.2-4.5h7.6z" />
+          </svg>
+        )
+      };
     case 'mp3':
-      return "MP3";
+      return {
+        label: "Lossy",
+        icon: (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )
+      };
     case 'ogg':
     case 'opus':
-      return "Ogg";
+      return {
+        label: "Ogg Audio",
+        icon: (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+        )
+      };
     default:
-      return "Lossless";
+      return {
+        label: "Lossless",
+        icon: (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 10v4M6 6v12M10 3v18M14 7v10M18 5v14M22 10v4" />
+          </svg>
+        )
+      };
   }
 }
+
+const DEFAULT_PALETTE: Palette = {
+  primary: "rgb(250, 45, 72)",
+  secondary: "rgb(110, 60, 230)",
+  accent: "#fa2d48",
+  glowPrimary: "rgba(250, 45, 72, 0.75)",
+  glowSecondary: "rgba(110, 60, 230, 0.65)"
+};
 
 export function NowPlayingScreen({
   isOpen,
@@ -85,29 +137,44 @@ export function NowPlayingScreen({
   const [sidePanel, setSidePanel] = useState<SidePanel>('none');
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Dual-Buffer Palette Crossfade
+  const [paletteBuffer, setPaletteBuffer] = useState<{
+    current: Palette;
+    previous: Palette | null;
+    key: number;
+  }>({
+    current: DEFAULT_PALETTE,
+    previous: null,
+    key: 0
+  });
 
   // Lyrics State
   const [lyrics, setLyrics] = useState<LyricsData | null>(null);
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLParagraphElement | null>(null);
 
-  const [palette, setPalette] = useState<Palette>({
-    primary: "rgb(250, 45, 72)",
-    secondary: "rgb(110, 60, 230)",
-    accent: "#fa2d48",
-    glowPrimary: "rgba(250, 45, 72, 0.75)",
-    glowSecondary: "rgba(110, 60, 230, 0.65)"
-  });
+  // Initial Fullscreen check
+  useEffect(() => {
+    window.electronAPI?.isWindowMaximized?.().then((max) => {
+      setIsFullScreen(Boolean(max));
+    });
+  }, []);
 
-  // Reset video error state whenever song or animated URL changes
   useEffect(() => {
     setVideoError(false);
   }, [currentSong?.id, currentSong?.animatedArtworkUrl]);
 
-  // Color Palette Extraction
+  // Extract Palette on song change
   useEffect(() => {
     if (currentSong?.artworkUrl) {
-      extractPaletteFromImage(currentSong.artworkUrl).then((p) => {
-        setPalette(p);
+      extractPaletteFromImage(currentSong.artworkUrl).then((newPalette) => {
+        setPaletteBuffer((prev) => ({
+          previous: prev.current,
+          current: newPalette,
+          key: prev.key + 1
+        }));
       });
     }
   }, [currentSong?.id, currentSong?.artworkUrl]);
@@ -129,12 +196,16 @@ export function NowPlayingScreen({
     }
   }, [currentSong?.id]);
 
-  // Auto-scroll active lyric line smoothly into view
+  // Contained Auto-Scroll for Lyrics
   useEffect(() => {
-    if (sidePanel === 'lyrics' && lyrics?.isSynced && activeLyricRef.current) {
-      activeLyricRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
+    if (sidePanel === 'lyrics' && lyrics?.isSynced && activeLyricRef.current && lyricsContainerRef.current) {
+      const container = lyricsContainerRef.current;
+      const activeEl = activeLyricRef.current;
+      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+
+      container.scrollTo({
+        top: targetScroll,
+        behavior: 'smooth'
       });
     }
   }, [currentTime, sidePanel, lyrics?.isSynced]);
@@ -144,7 +215,7 @@ export function NowPlayingScreen({
   const effectiveDuration = duration > 0 ? duration : (currentSong?.duration || 0);
   const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.max(0, (currentTime / effectiveDuration) * 100)) : 0;
   const remainingTime = effectiveDuration > currentTime ? effectiveDuration - currentTime : 0;
-  const qualityBadge = getAudioBadge(currentSong?.filePath);
+  const badgeInfo = getAudioBadgeInfo(currentSong?.filePath);
 
   const hasLyrics = lyrics !== null && lyrics.lines && lyrics.lines.length > 0;
   const animatedUrl = currentSong?.animatedArtworkUrl;
@@ -156,6 +227,21 @@ export function NowPlayingScreen({
 
   const handleToggleQueue = () => {
     setSidePanel((prev) => (prev === 'queue' ? 'none' : 'queue'));
+  };
+
+  const handleToggleFullScreen = async () => {
+    if (window.electronAPI?.toggleFullScreen) {
+      const next = await window.electronAPI.toggleFullScreen();
+      setIsFullScreen(next);
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+        setIsFullScreen(false);
+      } else {
+        document.documentElement.requestFullscreen();
+        setIsFullScreen(true);
+      }
+    }
   };
 
   const upcomingQueue = queue.slice(queueIndex + 1);
@@ -171,47 +257,99 @@ export function NowPlayingScreen({
     }
   }
 
+  const { current: activePalette, previous: oldPalette, key: fadeKey } = paletteBuffer;
+
   return (
-    <div
-      className="now-playing-overlay"
-      style={{
-        background: `radial-gradient(circle at 25% 35%, ${palette.glowPrimary} 0%, transparent 60%),
-                     radial-gradient(circle at 75% 65%, ${palette.glowSecondary} 0%, transparent 60%),
-                     #09090d`
-      }}
-    >
-      {/* Aurora Mesh */}
+    <div className="now-playing-overlay">
+      {/* 1. Base Ambient Wash (Dual-Buffer Crossfade) */}
+      {oldPalette && (
+        <div
+          key={`base-prev-${fadeKey}`}
+          className="base-ambient-wash fade-out"
+          style={{
+            background: `radial-gradient(circle at 25% 35%, ${oldPalette.glowPrimary} 0%, transparent 60%),
+                         radial-gradient(circle at 75% 65%, ${oldPalette.glowSecondary} 0%, transparent 60%)`
+          }}
+        />
+      )}
+      <div
+        key={`base-curr-${fadeKey}`}
+        className="base-ambient-wash fade-in"
+        style={{
+          background: `radial-gradient(circle at 25% 35%, ${activePalette.glowPrimary} 0%, transparent 60%),
+                       radial-gradient(circle at 75% 65%, ${activePalette.glowSecondary} 0%, transparent 60%)`
+        }}
+      />
+
+      {/* 2. Dual-Buffer Aurora Mesh Layers */}
       <div className="aurora-container">
-        <div
-          className="aurora-orb orb-1"
-          style={{ background: `radial-gradient(circle, ${palette.glowPrimary} 0%, transparent 65%)` }}
-        />
-        <div
-          className="aurora-orb orb-2"
-          style={{ background: `radial-gradient(circle, ${palette.glowSecondary} 0%, transparent 65%)` }}
-        />
-        <div
-          className="aurora-orb orb-3"
-          style={{ background: `radial-gradient(circle, ${palette.glowPrimary} 0%, transparent 65%)` }}
-        />
+        {oldPalette && (
+          <div key={`aurora-prev-${fadeKey}`} className="aurora-layer fade-out">
+            <div
+              className="aurora-orb orb-1"
+              style={{ background: `radial-gradient(circle, ${oldPalette.glowPrimary} 0%, transparent 65%)` }}
+            />
+            <div
+              className="aurora-orb orb-2"
+              style={{ background: `radial-gradient(circle, ${oldPalette.glowSecondary} 0%, transparent 65%)` }}
+            />
+            <div
+              className="aurora-orb orb-3"
+              style={{ background: `radial-gradient(circle, ${oldPalette.glowPrimary} 0%, transparent 65%)` }}
+            />
+          </div>
+        )}
+
+        <div key={`aurora-curr-${fadeKey}`} className="aurora-layer fade-in">
+          <div
+            className="aurora-orb orb-1"
+            style={{ background: `radial-gradient(circle, ${activePalette.glowPrimary} 0%, transparent 65%)` }}
+          />
+          <div
+            className="aurora-orb orb-2"
+            style={{ background: `radial-gradient(circle, ${activePalette.glowSecondary} 0%, transparent 65%)` }}
+          />
+          <div
+            className="aurora-orb orb-3"
+            style={{ background: `radial-gradient(circle, ${activePalette.glowPrimary} 0%, transparent 65%)` }}
+          />
+        </div>
       </div>
 
       {/* Top Bar Navigation */}
       <header className="now-playing-topbar">
+        {/* Collapse Button (Left Circle) */}
         <button className="now-playing-collapse-btn" onClick={onClose} title="Collapse" type="button">
           <ChevronDownIcon size={24} color="#ffffff" />
         </button>
 
-        {/* Top Right Queue Button */}
-        <button
-          className={`now-playing-top-queue-btn ${sidePanel === 'queue' ? 'active' : ''}`}
-          onClick={handleToggleQueue}
-          title={sidePanel === 'queue' ? "Hide Queue" : "View Queue"}
-          type="button"
-          style={sidePanel === 'queue' ? { backgroundColor: palette.glowPrimary, borderColor: palette.accent } : undefined}
-        >
-          <QueueIcon size={18} color="#ffffff" />
-        </button>
+        {/* Top-Right Circular Actions: Queue & Fullscreen */}
+        <div className="now-playing-top-actions">
+          {/* Circular Queue Button */}
+          <button
+            className={`now-playing-circle-btn ${sidePanel === 'queue' ? 'active' : ''}`}
+            onClick={handleToggleQueue}
+            title={sidePanel === 'queue' ? "Hide Queue" : "View Queue"}
+            type="button"
+            style={sidePanel === 'queue' ? { backgroundColor: activePalette.glowPrimary, borderColor: activePalette.accent } : undefined}
+          >
+            <QueueIcon size={18} color="#ffffff" />
+          </button>
+
+          {/* Circular Fullscreen Toggle Button */}
+          <button
+            className="now-playing-circle-btn"
+            onClick={handleToggleFullScreen}
+            title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
+            type="button"
+          >
+            {isFullScreen ? (
+              <ExitFullScreenIcon size={18} color="#ffffff" />
+            ) : (
+              <FullScreenIcon size={18} color="#ffffff" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main Body */}
@@ -222,46 +360,75 @@ export function NowPlayingScreen({
             className="now-playing-artwork-card"
             style={{
               position: 'relative',
-              boxShadow: `0 24px 60px -10px rgba(0, 0, 0, 0.8), 0 0 40px ${palette.glowPrimary}`
+              boxShadow: `0 24px 60px -10px rgba(0, 0, 0, 0.8), 0 0 40px ${activePalette.glowPrimary}`,
+              transition: 'box-shadow 2.2s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           >
-            {/* Animated Loop Artwork (Matching AlbumDetailPage working pattern) */}
-            {animatedUrl && !videoError ? (
+            {/* Static Image Layer */}
+            {currentSong?.artworkUrl ? (
+              <img
+                key={`img-${currentSong.id}-${currentSong.artworkUrl}`}
+                src={currentSong.artworkUrl}
+                alt={currentSong.title}
+                className="artwork-fade-transition"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  zIndex: 1
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1
+                }}
+              >
+                <AlbumsIcon size={100} color="rgba(255, 255, 255, 0.3)" />
+              </div>
+            )}
+
+            {/* Animated Loop Video Layer */}
+            {animatedUrl && !videoError && (
               <video
-                key={animatedUrl}
+                key={`vid-${currentSong.id}-${animatedUrl}`}
                 src={animatedUrl}
                 poster={currentSong?.artworkUrl}
                 autoPlay
                 loop
                 muted
                 playsInline
+                className="artwork-fade-transition"
                 style={{
+                  position: 'relative',
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover'
+                  objectFit: 'cover',
+                  zIndex: 2
+                }}
+                onLoadedData={(e) => {
+                  e.currentTarget.play().catch(() => {});
                 }}
                 onError={() => setVideoError(true)}
               />
-            ) : currentSong?.artworkUrl ? (
-              <img
-                src={currentSong.artworkUrl}
-                alt={currentSong.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              <AlbumsIcon size={100} color="rgba(255, 255, 255, 0.3)" />
             )}
           </div>
 
           <div className="now-playing-track-details centered-meta">
-            {/* Centered Info & Quality Badge */}
+            {/* Centered Track Info */}
             <div className="track-header-column">
               {currentSong && (
-                <span className="audio-quality-badge-top">{qualityBadge}</span>
+                <div className="audio-quality-badge-top">
+                  <span className="badge-icon-svg">{badgeInfo.icon}</span>
+                  <span>{badgeInfo.label}</span>
+                </div>
               )}
 
               <h1 className="now-playing-title-centered">
@@ -273,7 +440,7 @@ export function NowPlayingScreen({
               </p>
             </div>
 
-            {/* Interactive Scrubber Bar */}
+            {/* Scrubber Bar */}
             <div className="now-playing-scrubber-group">
               <div
                 className="now-playing-scrubber-bar"
@@ -289,7 +456,8 @@ export function NowPlayingScreen({
                   style={{
                     width: `${progressPercent}%`,
                     backgroundColor: "#ffffff",
-                    boxShadow: `0 0 12px ${palette.accent}`
+                    boxShadow: `0 0 12px ${activePalette.accent}`,
+                    transition: 'box-shadow 2.2s ease, width 0.1s linear'
                   }}
                 />
               </div>
@@ -301,7 +469,7 @@ export function NowPlayingScreen({
 
             {/* 5-Button Transport Bar */}
             <div className="now-playing-transport">
-              {/* 1. Volume Button with Popover */}
+              {/* 1. Volume Popover */}
               <div
                 className="transport-volume-wrapper"
                 onMouseEnter={() => setShowVolumeSlider(true)}
@@ -331,7 +499,7 @@ export function NowPlayingScreen({
                       value={volume}
                       onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
                       className="pill-volume-slider"
-                      style={{ accentColor: palette.accent }}
+                      style={{ accentColor: activePalette.accent }}
                     />
                   </div>
                 )}
@@ -377,7 +545,7 @@ export function NowPlayingScreen({
                     !hasLyrics
                       ? "rgba(255, 255, 255, 0.25)"
                       : sidePanel === 'lyrics'
-                      ? palette.accent
+                      ? activePalette.accent
                       : "rgba(255, 255, 255, 0.85)"
                   }
                 />
@@ -386,10 +554,10 @@ export function NowPlayingScreen({
           </div>
         </div>
 
-        {/* Right Side Panel: Lyrics */}
+        {/* Right Side: Lyrics */}
         {sidePanel === 'lyrics' && hasLyrics && (
           <div className="now-playing-right">
-            <div className="lyrics-stream">
+            <div className="lyrics-stream" ref={lyricsContainerRef}>
               {lyrics.isSynced ? (
                 lyrics.lines.map((line, idx) => {
                   const isActive = idx === activeLyricIndex;
@@ -403,7 +571,7 @@ export function NowPlayingScreen({
                       onClick={() => onSeek(line.time)}
                       style={
                         isActive
-                          ? { textShadow: `0 4px 28px ${palette.glowPrimary}` }
+                          ? { textShadow: `0 4px 28px ${activePalette.glowPrimary}` }
                           : undefined
                       }
                       title={`Jump to ${formatDuration(line.time)}`}
@@ -423,7 +591,7 @@ export function NowPlayingScreen({
           </div>
         )}
 
-        {/* Right Side Panel: Queue View */}
+        {/* Right Side: Queue */}
         {sidePanel === 'queue' && (
           <div className="now-playing-right queue-panel">
             <div className="queue-header-row">

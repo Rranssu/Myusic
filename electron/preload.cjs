@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   maximizeWindow: () => ipcRenderer.send("window:maximize"),
   closeWindow: () => ipcRenderer.send("window:close"),
   isWindowMaximized: () => ipcRenderer.invoke("window:isMaximized"),
+  toggleFullScreen: () => ipcRenderer.invoke("window:toggleFullScreen"),
+  isFullScreen: () => ipcRenderer.invoke("window:isFullScreen"),
 
   // Dedicated Downloader Methods
   fetchStaticMetadata: () => ipcRenderer.invoke("metadata:fetchStatic"),

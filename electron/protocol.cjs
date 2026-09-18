@@ -46,11 +46,15 @@ function setupCustomProtocol(protocol, net, artworkCacheDir, animatedCacheDir) {
       }
 
       // 2. Animated Artwork Video Route (.mp4 with Range seeking)
+      // 2. Animated Artwork Video Route (.mp4 with Range seeking)
       if (urlObj.hostname === "animated") {
         const fileName = decodeURIComponent(urlObj.pathname.slice(1));
         const fullPath = path.join(animatedCacheDir, fileName);
 
-        if (fs.existsSync(fullPath)) {
+        const fileExists = fs.existsSync(fullPath);
+        console.log(`[Protocol atom://animated] Request: "${fileName}" | Exists on disk: ${fileExists}`);
+
+        if (fileExists) {
           const stat = fs.statSync(fullPath);
           const fileSize = stat.size;
           const rangeHeader = request.headers.get("range");

@@ -1,16 +1,29 @@
-@property --bg-app {
+/* =======================================================
+   Houdini Typed Color Properties (Enables Smooth Gradient Blending)
+======================================================= */
+@property --aurora-primary {
   syntax: '<color>';
   inherits: true;
-  initial-value: rgba(12, 12, 16, 0.65);
+  initial-value: rgba(250, 45, 72, 0.75);
 }
 
-@property --bg-sidebar {
+@property --aurora-secondary {
   syntax: '<color>';
   inherits: true;
-  initial-value: rgba(8, 8, 12, 0.45);
+  initial-value: rgba(110, 60, 230, 0.65);
+}
+
+@property --accent-primary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fa2d48;
 }
 
 :root {
+  /* Dynamic Aurora Blend Targets */
+  --aurora-primary: rgba(250, 45, 72, 0.75);
+  --aurora-secondary: rgba(110, 60, 230, 0.65);
+
   /* Translucent Glassmorphism Palette */
   --bg-app: rgba(12, 12, 16, 0.65);
   --bg-sidebar: rgba(8, 8, 12, 0.45);
@@ -24,27 +37,29 @@
   --accent-primary-hover: #ff4761;
   --accent-glow: rgba(250, 45, 72, 0.35);
 
-  /* Text Colors */
+  /* High-Contrast Text */
   --text-primary: #ffffff !important;
   --text-secondary: rgba(255, 255, 255, 0.75) !important;
   --text-muted: rgba(255, 255, 255, 0.45) !important;
 
-  /* Borders */
+  /* Glass Borders */
   --border-subtle: rgba(255, 255, 255, 0.09);
   --border-hover: rgba(255, 255, 255, 0.18);
 
-  /* Metrics */
+  /* Layout Metrics */
   --sidebar-width: 240px;
+  --player-height: 84px;
+  --topbar-height: 64px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 22px;
   --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 
-  /* High-Performance Transitions */
-  --transition-fast: 2.0s cubic-bezier(0.2, 0, 0, 1);
-  --transition-normal: 3.0s cubic-bezier(0.25, 1, 0.5, 1);
-  --transition-slow: 4.0s cubic-bezier(0.25, 1, 0.5, 1); /* For color morphing */
+  /* Micro-Interactions vs Theme Morphing Timings */
+  --transition-fast: 0.15s ease;                               /* Button hovers & micro-interactions */
+  --transition-normal: 0.28s cubic-bezier(0.16, 1, 0.3, 1);    /* Modals & panel expansions */
+  --transition-slow: 3.0s cubic-bezier(0.16, 1, 0.3, 1);      /* Slow, luxury background color dissolve */
 }
 
 * {
@@ -70,10 +85,18 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Fluid Crossfade for Global Theme Variables */
-.app-container, .app-sidebar, .app-viewport {
-  transition: --bg-app var(--transition-slow),
-              --bg-sidebar var(--transition-slow),
+/* Fluid Crossfade for Theme Elements and Background Aurora */
+:root,
+.app-container,
+.app-sidebar,
+.app-viewport,
+.now-playing-overlay,
+.global-aurora-orb,
+.aurora-orb {
+  transition: --aurora-primary var(--transition-slow),
+              --aurora-secondary var(--transition-slow),
+              --accent-primary 1.0s ease,
               background var(--transition-slow),
-              background-color var(--transition-slow);
+              background-color var(--transition-slow),
+              border-color 1.0s ease;
 }

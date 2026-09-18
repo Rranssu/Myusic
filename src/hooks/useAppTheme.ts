@@ -19,7 +19,6 @@ interface UseAppThemeProps {
 export function useAppTheme({ selectedAlbum, selectedArtist, activeSong }: UseAppThemeProps) {
   const [appPalette, setAppPalette] = useState<Palette>(DEFAULT_PALETTE);
 
-  // Hierarchy: 1. Album Detail > 2. Artist Detail > 3. Playing Song > 4. Default
   const activeThemeSource =
     selectedAlbum?.artworkUrl ||
     selectedArtist?.artworkUrl ||
@@ -31,15 +30,19 @@ export function useAppTheme({ selectedAlbum, selectedArtist, activeSong }: UseAp
       extractPaletteFromImage(activeThemeSource).then((p) => {
         setAppPalette(p);
 
-        // Morph full window background
+        // Update Houdini typed color properties for frame-by-frame blending
+        document.documentElement.style.setProperty('--aurora-primary', p.glowPrimary);
+        document.documentElement.style.setProperty('--aurora-secondary', p.glowSecondary);
+
+        // Morph window background
         document.documentElement.style.setProperty(
           '--bg-app',
-          `radial-gradient(circle at 18% 22%, ${p.glowPrimary} 0%, transparent 60%),
-           radial-gradient(circle at 82% 78%, ${p.glowSecondary} 0%, transparent 60%),
+          `radial-gradient(circle at 18% 22%, var(--aurora-primary) 0%, transparent 60%),
+           radial-gradient(circle at 82% 78%, var(--aurora-secondary) 0%, transparent 60%),
            rgba(10, 10, 14, 0.72)`
         );
 
-        // Tint sidebar with secondary hue
+        // Tint sidebar
         document.documentElement.style.setProperty(
           '--bg-sidebar',
           `linear-gradient(180deg, ${p.glowSecondary.replace(/[\d.]+\)$/, '0.22)')} 0%, rgba(8, 8, 12, 0.65) 100%)`
@@ -51,6 +54,8 @@ export function useAppTheme({ selectedAlbum, selectedArtist, activeSong }: UseAp
       });
     } else {
       setAppPalette(DEFAULT_PALETTE);
+      document.documentElement.style.setProperty('--aurora-primary', DEFAULT_PALETTE.glowPrimary);
+      document.documentElement.style.setProperty('--aurora-secondary', DEFAULT_PALETTE.glowSecondary);
       document.documentElement.style.removeProperty('--bg-app');
       document.documentElement.style.removeProperty('--bg-sidebar');
       document.documentElement.style.removeProperty('--accent-primary');

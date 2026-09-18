@@ -101,6 +101,21 @@ function registerIpcHandlers({
     return win ? win.isMaximized() : false;
   });
 
+  ipcMain.handle("window:toggleFullScreen", () => {
+    const win = getMainWindow();
+    if (win) {
+      const nextState = !win.isFullScreen();
+      win.setFullScreen(nextState);
+      return nextState;
+    }
+    return false;
+  });
+
+  ipcMain.handle("window:isFullScreen", () => {
+    const win = getMainWindow();
+    return win ? win.isFullScreen() : false;
+  });
+
   // 5. System File Explorer
   ipcMain.handle("system:showItemInFolder", (_event, fullPath) => {
     if (fs.existsSync(fullPath)) {

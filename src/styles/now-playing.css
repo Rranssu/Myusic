@@ -1,28 +1,23 @@
 /* =======================================================
    Apple Music Animated Fluid Aurora Mesh Overlay
 ======================================================= */
-/* =======================================================
-   Apple Music Animated Fluid Aurora Mesh Overlay
-======================================================= */
 .now-playing-overlay {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: #08080b; 
+  background: #08080b; /* Deep dark base canvas */
   display: flex;
   flex-direction: column;
-  padding: 20px 48px 28px 48px;
+  padding: 24px 52px 32px 52px;
   overflow: hidden;
-  
-  /* Apple-style spring slide up */
-  animation: slideUpSpring 1.0s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: slideUpSpring 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform-origin: bottom center;
 }
 
 @keyframes slideUpSpring {
   0% {
     opacity: 0;
-    transform: translateY(100%) scale(0.95);
+    transform: translateY(100%) scale(0.94);
     border-radius: 40px;
   }
   100% {
@@ -32,22 +27,61 @@
   }
 }
 
-/* Fluid Animated Aurora Layer */
+/* Base Ambient Wash Layers (Dual-Buffer Crossfade) */
+.base-ambient-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.base-ambient-wash.fade-in {
+  animation: auroraCrossfadeIn 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.base-ambient-wash.fade-out {
+  animation: auroraCrossfadeOut 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Fluid Animated Aurora Layer Container */
 .aurora-container {
   position: absolute;
   inset: -20%;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
-  filter: blur(80px) saturate(190%);
-  opacity: 0.9;
-  transition: opacity 1.2s ease, background 1.2s ease; /* Smooth color transition */
+  filter: blur(95px) saturate(200%);
+  opacity: 0.92;
+}
+
+.aurora-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.aurora-layer.fade-in {
+  animation: auroraCrossfadeIn 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.aurora-layer.fade-out {
+  animation: auroraCrossfadeOut 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes auroraCrossfadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes auroraCrossfadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .aurora-orb {
   position: absolute;
   border-radius: 50%;
-  transition: background 1.2s ease;
 }
 
 .orb-1 {
@@ -93,6 +127,7 @@
 }
 
 /* Top Bar */
+/* Top Bar & Circular Action Buttons */
 .now-playing-topbar {
   display: flex;
   align-items: center;
@@ -101,12 +136,20 @@
   z-index: 10;
   flex-shrink: 0;
   height: 48px;
+  margin-bottom: 8px;
 }
 
-.now-playing-collapse-btn {
+.now-playing-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.now-playing-collapse-btn,
+.now-playing-circle-btn {
   background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50% !important; /* Forces perfect circle */
   width: 38px;
   height: 38px;
   display: flex;
@@ -114,12 +157,19 @@
   justify-content: center;
   color: #ffffff;
   cursor: pointer;
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  backdrop-filter: blur(20px);
+  padding: 0;
+  transition: background-color var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
 }
 
-.now-playing-collapse-btn:hover {
+.now-playing-collapse-btn:hover,
+.now-playing-circle-btn:hover {
   background: rgba(255, 255, 255, 0.22);
-  transform: translateY(2px);
+  transform: translateY(1px);
+}
+
+.now-playing-circle-btn.active {
+  border-color: var(--accent-primary);
 }
 
 .now-playing-top-queue-btn {
@@ -127,7 +177,7 @@
   align-items: center;
   gap: 8px;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   padding: 6px 14px;
   border-radius: 9999px;
   color: #ffffff;
@@ -146,33 +196,36 @@
   border-color: var(--accent-primary);
 }
 
-/* Split Body */
+/* Fluid Split Body */
 .now-playing-body {
   display: grid;
-  grid-template-columns: minmax(300px, 420px) 1fr;
-  gap: clamp(32px, 5vw, 72px);
+  grid-template-columns: minmax(320px, 440px) 1fr;
+  gap: clamp(36px, 6vw, 76px);
   flex: 1;
   min-height: 0;
   align-items: center;
   z-index: 10;
-  max-width: 1240px;
+  max-width: 1260px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* Left Column: Balanced Vertical Spacing */
 .now-playing-left {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: clamp(14px, 2.2vh, 24px);
+  align-items: center;
+  gap: clamp(18px, 3vh, 28px); /* Consistent spacing between artwork and controls */
   min-height: 0;
+  width: 100%;
 }
 
 .now-playing-artwork-card {
   width: 100%;
-  max-width: clamp(230px, 36vh, 380px);
+  max-width: clamp(240px, 38vh, 380px);
   aspect-ratio: 1 / 1;
-  border-radius: clamp(14px, 2vh, 22px);
+  border-radius: clamp(16px, 2.2vh, 24px);
   background: #15151e;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.85);
@@ -180,17 +233,42 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  margin: 0 auto;
   flex-shrink: 0;
+  position: relative;
 }
 
-/* Centered Typography & Top Badge */
+/* =======================================================
+   Artwork Fluid Transition (Applies to both <img> and <video>)
+======================================================= */
+.now-playing-artwork-card img,
+.now-playing-artwork-card video,
+.artwork-fade-transition {
+  animation: fadeArtIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform, filter;
+}
+
+@keyframes fadeArtIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+/* Centered Typography Block */
 .now-playing-track-details.centered-meta {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   width: 100%;
+  max-width: clamp(240px, 38vh, 380px);
+  gap: clamp(12px, 2vh, 18px); /* Even gap between Title group, Scrubber, and Buttons */
 }
 
 .track-header-column {
@@ -198,17 +276,19 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
 }
 
+/* Audio Quality Badge with Icon */
 .audio-quality-badge-top {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 4px;
-  padding: 1px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  padding: 2px 8px;
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -218,11 +298,19 @@
   backdrop-filter: blur(10px);
 }
 
+.badge-icon-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+}
+
+/* Song Title */
 .now-playing-title-centered {
-  font-size: clamp(1.25rem, 2.4vh, 1.65rem);
+  font-size: clamp(1.3rem, 2.5vh, 1.65rem);
   font-weight: 700;
   letter-spacing: -0.4px;
-  margin-bottom: 2px;
+  line-height: 1.25;
   color: #ffffff !important;
   white-space: nowrap;
   overflow: hidden;
@@ -230,6 +318,7 @@
   max-width: 100%;
 }
 
+/* Artist & Album */
 .now-playing-artist-centered {
   font-size: clamp(0.88rem, 1.6vh, 1.02rem);
   color: rgba(255, 255, 255, 0.75) !important;
@@ -237,47 +326,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  margin-bottom: 4px;
 }
 
-/* Transport Bar Volume Popover */
-.transport-volume-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.transport-volume-popover {
-  position: absolute;
-  bottom: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(24, 24, 30, 0.95);
-  backdrop-filter: blur(25px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
-  z-index: 50;
-}
-
-/* Invisible Hover Bridge: Fills the 14px gap in Now Playing */
-.transport-volume-popover::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: -16px;
-  right: -16px;
-  height: 22px; /* Bridges the gap completely */
-  background: transparent;
-}
-
-/* Scrubber */
+/* Scrubber Group */
 .now-playing-scrubber-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -309,7 +364,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Transport Buttons */
+/* Transport Buttons: Even Spacing */
 .now-playing-transport {
   display: flex;
   align-items: center;
@@ -333,7 +388,39 @@
   transform: scale(1.15);
 }
 
-/* Centered Mode (Collapses Right Panel) */
+/* Transport Bar Volume Popover */
+.transport-volume-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transport-volume-popover {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 24, 30, 0.95);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+}
+
+.transport-volume-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: -16px;
+  right: -16px;
+  height: 22px;
+  background: transparent;
+}
+
+/* Centered Mode */
 .now-playing-body.centered-mode {
   display: flex;
   flex-direction: column;
@@ -346,72 +433,87 @@
 .now-playing-body.centered-mode .now-playing-left {
   width: 100%;
   max-width: 440px;
-  align-items: center;
 }
 
 .now-playing-body.centered-mode .now-playing-artwork-card {
   max-width: clamp(260px, 42vh, 440px);
-  margin-bottom: 8px;
 }
 
 .now-playing-body.centered-mode .now-playing-track-details {
   max-width: 100%;
 }
 
-.now-playing-artwork-card img,
-.now-playing-artwork-card video {
-  animation: fadeImageIn 1.0s ease-out;
-}
-
-@keyframes fadeImageIn {
-  from { opacity: 0; filter: blur(10px); transform: scale(0.95); }
-  to { opacity: 1; filter: blur(0); transform: scale(1); }
-}
-
-/* Right Side: Lyrics */
+/* =======================================================
+   Right Side: Lyrics with Edge-Fading Mask
+======================================================= */
 .now-playing-right {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 100%;
+  height: 82%;
   position: relative;
-  padding-left: clamp(10px, 2vw, 28px);
+  padding-left: clamp(10px, 2.5vw, 32px);
   min-height: 0;
-  overflow: hidden;
+  overflow: hidden; /* Keeps scroll completely contained */
 }
 
+/* Clean Lyrics Stream: Faded at top and bottom edges */
 .lyrics-stream {
   display: flex;
   flex-direction: column;
-  gap: clamp(14px, 2.6vh, 26px);
+  gap: clamp(16px, 2.8vh, 28px);
   overflow-y: auto;
-  padding-right: 20px;
+  overflow-x: hidden;
+  padding: 35vh 24px 35vh 0; /* Padding allows first & last line to sit in center */
+  height: 100%;
+  scroll-behavior: smooth;
+
+  /* Apple Music Edge-Fading Mask */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 22%,
+    black 78%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 22%,
+    black 78%,
+    transparent 100%
+  );
 }
 
 .lyric-line {
-  font-size: clamp(1.2rem, 2.3vw, 1.85rem);
+  font-size: clamp(1.25rem, 2.2vw, 1.8rem);
   font-weight: 700;
   line-height: 1.35;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
+  user-select: none;
 }
 
 .lyric-line.passed {
-  color: rgba(255, 255, 255, 0.28) !important;
+  color: rgba(255, 255, 255, 0.22) !important;
   filter: blur(1.5px);
+  transform: scale(0.97);
+  transform-origin: left;
 }
 
 .lyric-line.active {
   color: #ffffff !important;
-  font-size: clamp(1.6rem, 2.9vw, 2.3rem);
+  font-size: clamp(1.7rem, 2.9vw, 2.35rem);
   transform: scale(1.02);
   transform-origin: left;
   filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.35));
 }
 
 .lyric-line.upcoming {
-  color: rgba(255, 255, 255, 0.42) !important;
+  color: rgba(255, 255, 255, 0.38) !important;
   filter: blur(1px);
+  transform: scale(0.98);
+  transform-origin: left;
 }
 
 .lyric-line:hover {
@@ -419,30 +521,19 @@
   filter: blur(0);
 }
 
-.lyrics-bottom-controls {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  display: flex;
-  gap: 10px;
+/* Unsynced Plain Text Lyrics */
+.lyric-line.unsynced-line {
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  color: rgba(255, 255, 255, 0.85) !important;
+  line-height: 1.65;
+  filter: none !important;
+  cursor: default;
 }
 
-.lyrics-action-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.lyrics-action-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
+.pill-icon-btn.lyrics-btn-disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
 }
 
 /* =======================================================
@@ -568,20 +659,4 @@
   text-align: center;
   color: rgba(255, 255, 255, 0.45);
   font-size: 0.9rem;
-}
-
-/* Disabled & Unpressable Lyrics Button */
-.pill-icon-btn.lyrics-btn-disabled {
-  opacity: 0.3 !important;
-  cursor: not-allowed !important;
-  pointer-events: none;
-}
-
-/* Unsynced Plain Text Lyrics */
-.lyric-line.unsynced-line {
-  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
-  color: rgba(255, 255, 255, 0.85) !important;
-  line-height: 1.6;
-  filter: none !important;
-  cursor: default;
 }

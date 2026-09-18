@@ -6,20 +6,23 @@ interface SettingsPageProps {
   isScanning: boolean;
   onScanFolder: () => void;
   onLibraryUpdated: (lib: LibraryData) => void;
+  crossfadeDuration: number;
+  onCrossfadeChange: (seconds: number) => void;
 }
 
 export function SettingsPage({
   library,
   isScanning,
   onScanFolder,
-  onLibraryUpdated
+  onLibraryUpdated,
+  crossfadeDuration,
+  onCrossfadeChange
 }: SettingsPageProps) {
   const [isFetchingStatic, setIsFetchingStatic] = useState(false);
   const [isFetchingAnimated, setIsFetchingAnimated] = useState(false);
   const [isFetchingArtist, setIsFetchingArtist] = useState(false);
   const [isFetchingLyrics, setIsFetchingLyrics] = useState(false);
 
-  // 1. Static Metadata (iTunes + Wikipedia)
   const handleFetchStatic = async () => {
     if (!window.electronAPI?.fetchStaticMetadata) return;
     try {
@@ -31,7 +34,6 @@ export function SettingsPage({
     }
   };
 
-  // 2. Animated Artwork (.mp4 video loops)
   const handleFetchAnimated = async () => {
     if (!window.electronAPI?.fetchAnimatedMetadata) return;
     try {
@@ -43,7 +45,6 @@ export function SettingsPage({
     }
   };
 
-  // 3. Artist Portraits & Biographies
   const handleFetchArtist = async () => {
     if (!window.electronAPI?.fetchArtistMetadata) return;
     try {
@@ -55,7 +56,6 @@ export function SettingsPage({
     }
   };
 
-  // 4. Batch Lyrics Downloader (LRCLIB)
   const handleFetchLyrics = async () => {
     if (!window.electronAPI?.fetchLyricsMetadata) return;
     try {
@@ -81,7 +81,39 @@ export function SettingsPage({
         </button>
       </div>
 
-      {/* 2. Static Metadata & Covers */}
+      {/* 2. Audio Playback & Seamless Crossfade Slider */}
+      <div style={{ background: 'var(--bg-card)', padding: '22px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <h3 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '6px' }}>Seamless Playback & Crossfade</h3>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: crossfadeDuration > 0 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
+            {crossfadeDuration === 0 ? "Off (Disabled)" : `${crossfadeDuration} seconds`}
+          </span>
+        </div>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          Fades out the ending track while fading in the next track with no pause between songs. Set to 0 to disable.
+        </p>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>0s</span>
+          <input
+            type="range"
+            min="0"
+            max="12"
+            step="1"
+            value={crossfadeDuration}
+            onChange={(e) => onCrossfadeChange(parseInt(e.target.value, 10))}
+            style={{
+              flex: 1,
+              height: '4px',
+              accentColor: 'var(--accent-primary)',
+              cursor: 'pointer'
+            }}
+          />
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>12s</span>
+        </div>
+      </div>
+
+      {/* 3. Static Metadata & Covers */}
       <div style={{ background: 'var(--bg-card)', padding: '22px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
         <h3 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '6px' }}>Static Album Metadata & Covers</h3>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
@@ -92,7 +124,7 @@ export function SettingsPage({
         </button>
       </div>
 
-      {/* 3. Animated Video Covers */}
+      {/* 4. Animated Video Covers */}
       <div style={{ background: 'var(--bg-card)', padding: '22px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
         <h3 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '6px' }}>Animated Album Covers</h3>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
@@ -103,7 +135,7 @@ export function SettingsPage({
         </button>
       </div>
 
-      {/* 4. Artist Portraits & Biographies */}
+      {/* 5. Artist Portraits & Biographies */}
       <div style={{ background: 'var(--bg-card)', padding: '22px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
         <h3 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '6px' }}>Artist Portraits & Biographies</h3>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
@@ -114,7 +146,7 @@ export function SettingsPage({
         </button>
       </div>
 
-      {/* 5. Lyrics Downloader */}
+      {/* 6. Lyrics Downloader */}
       <div style={{ background: 'var(--bg-card)', padding: '22px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
         <h3 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '6px' }}>Synchronized & Plain Lyrics</h3>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px' }}>

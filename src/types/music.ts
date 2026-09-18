@@ -77,6 +77,8 @@ declare global {
       maximizeWindow: () => void;
       closeWindow: () => void;
       isWindowMaximized: () => Promise<boolean>;
+      toggleFullScreen: () => Promise<boolean>;
+      isFullScreen: () => Promise<boolean>;
 
       // Downloader Methods
       fetchStaticMetadata: () => Promise<LibraryData | null>;

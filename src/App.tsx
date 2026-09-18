@@ -67,6 +67,21 @@ export function App() {
   // Global Dynamic Theme Hook
   const { appPalette, activeThemeSource } = useAppTheme({ selectedAlbum, selectedArtist, activeSong });
 
+  // Unique key identifying the active view (triggers page transition animation on change)
+  const currentViewKey = selectedPlaylist
+    ? `playlist-${selectedPlaylist.id}`
+    : selectedAlbum
+    ? `album-${selectedAlbum.id}`
+    : selectedArtist
+    ? `artist-${selectedArtist.name}`
+    : `tab-${currentTab}`;
+
+  // Reset scroll position to top whenever switching pages
+  useEffect(() => {
+    const contentEl = document.querySelector('.app-content');
+    if (contentEl) contentEl.scrollTop = 0;
+  }, [currentViewKey]);
+
   // Navigation handlers
   const handleSelectTab = (tab: NavigationTab) => { setSelectedAlbum(null); setSelectedArtist(null); setSelectedPlaylist(null); setCurrentTab(tab); };
   const handleOpenAlbum = (album: Album) => { setSelectedArtist(null); setSelectedPlaylist(null); setSelectedAlbum(album); };
@@ -113,43 +128,62 @@ export function App() {
 
       <main className="app-viewport">
         <div className="app-content">
-          {selectedPlaylist ? (
-            <PlaylistDetailPage
-              playlist={selectedPlaylist}
-              allSongs={library.songs}
-              onBack={() => setSelectedPlaylist(null)}
-              onPlaySong={(song, list) => player.playSong(song, list)}
-              onUpdatePlaylist={handleSavePlaylist}
-              onDeletePlaylist={handleDeletePlaylist}
-            />
-          ) : selectedAlbum ? (
-            <AlbumDetailPage
-              album={selectedAlbum}
-              allSongs={library.songs}
-              onBack={() => setSelectedAlbum(null)}
-              onPlaySong={(song, list) => player.playSong(song, list || library.songs.filter(s => s.album.toLowerCase() === selectedAlbum.title.toLowerCase()))}
-              onSelectArtist={handleOpenArtist}
-            />
-          ) : selectedArtist ? (
-            <ArtistDetailPage
-              artist={selectedArtist}
-              allSongs={library.songs}
-              allAlbums={library.albums}
-              onBack={() => setSelectedArtist(null)}
-              onPlaySong={(song, list) => player.playSong(song, list || library.songs.filter(s => s.artist.toLowerCase() === selectedArtist.name.toLowerCase()))}
-              onSelectAlbum={handleOpenAlbum}
-            />
-          ) : (
-            <>
-              {currentTab === 'search' && <SearchPage />}
-              {currentTab === 'home' && <HomePage library={library} onScanFolderClick={handleScanFolder} onSelectAlbum={handleOpenAlbum} onPlaySong={(song) => player.playSong(song, library.songs)} />}
-              {currentTab === 'songs' && <SongsPage songs={library.songs} onPlaySong={(song) => player.playSong(song, library.songs)} onOpenTrackMenu={(e, song) => setContextMenu({ song, position: { x: e.currentTarget.getBoundingClientRect().right - 220, y: e.currentTarget.getBoundingClientRect().bottom + 6 } })} />}
-              {currentTab === 'albums' && <AlbumsPage albums={library.albums} onSelectAlbum={handleOpenAlbum} />}
-              {currentTab === 'artists' && <ArtistsPage artists={library.artists} onSelectArtist={setSelectedArtist} />}
-              {currentTab === 'playlists' && <PlaylistsPage playlists={playlists} allSongs={library.songs} onSelectPlaylist={handleOpenPlaylist} onOpenNewModal={() => setIsNewPlaylistModalOpen(true)} />}
-              {currentTab === 'settings' && <SettingsPage library={library} isScanning={isScanning} onScanFolder={handleScanFolder} onLibraryUpdated={setLibrary} />}
-            </>
-          )}
+          {/* Animated Page Transition Container */}
+          <div key={currentViewKey} className="page-transition-container">
+            {selectedPlaylist ? (
+              <PlaylistDetailPage
+                playlist={selectedPlaylist}
+                allSongs={library.songs}
+                onBack={() => setSelectedPlaylist(null)}
+                onPlaySong={(song, list) => player.playSong(song, list)}
+                onUpdatePlaylist={handleSavePlaylist}
+                onDeletePlaylist={handleDeletePlaylist}
+              />
+            ) : selectedAlbum ? (
+              <AlbumDetailPage
+                album={selectedAlbum}
+                allSongs={library.songs}
+                onBack={() => setSelectedAlbum(null)}
+                onPlaySong={(song, list) => player.playSong(song, list || library.songs.filter(s => s.album.toLowerCase() === selectedAlbum.title.toLowerCase()))}
+                onSelectArtist={handleOpenArtist}
+              />
+            ) : selectedArtist ? (
+              <ArtistDetailPage
+                artist={selectedArtist}
+                allSongs={library.songs}
+                allAlbums={library.albums}
+                onBack={() => setSelectedArtist(null)}
+                onPlaySong={(song, list) => player.playSong(song, list || library.songs.filter(s => s.artist.toLowerCase() === selectedArtist.name.toLowerCase()))}
+                onSelectAlbum={handleOpenAlbum}
+              />
+            ) : (
+              <>
+                {currentTab === 'search' && <SearchPage />}
+                {currentTab === 'home' && (
+                <HomePage
+                  library={library}
+                  onScanFolderClick={handleScanFolder}
+                  onSelectAlbum={handleOpenAlbum}
+                  onPlaySong={(song, list) => player.playSong(song, list || library.songs)}
+                />
+              )}
+                {currentTab === 'songs' && <SongsPage songs={library.songs} onPlaySong={(song) => player.playSong(song, library.songs)} onOpenTrackMenu={(e, song) => setContextMenu({ song, position: { x: e.currentTarget.getBoundingClientRect().right - 220, y: e.currentTarget.getBoundingClientRect().bottom + 6 } })} />}
+                {currentTab === 'albums' && <AlbumsPage albums={library.albums} onSelectAlbum={handleOpenAlbum} />}
+                {currentTab === 'artists' && <ArtistsPage artists={library.artists} onSelectArtist={setSelectedArtist} />}
+                {currentTab === 'playlists' && <PlaylistsPage playlists={playlists} allSongs={library.songs} onSelectPlaylist={handleOpenPlaylist} onOpenNewModal={() => setIsNewPlaylistModalOpen(true)} />}
+                {currentTab === 'settings' && (
+                  <SettingsPage
+                    library={library}
+                    isScanning={isScanning}
+                    onScanFolder={handleScanFolder}
+                    onLibraryUpdated={setLibrary}
+                    crossfadeDuration={player.crossfadeDuration}
+                    onCrossfadeChange={player.setCrossfadeDuration}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <NowPlayingBar
