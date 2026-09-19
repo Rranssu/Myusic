@@ -27,5 +27,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deletePlaylist: (playlistId) => ipcRenderer.invoke("playlists:delete", playlistId),
 
   // System
-  showItemInFolder: (fullPath) => ipcRenderer.invoke("system:showItemInFolder", fullPath)
+  showItemInFolder: (fullPath) => ipcRenderer.invoke("system:showItemInFolder", fullPath),
+
+  // Phase 6 Analytics & Recommendations
+  recordPlay: (song) => ipcRenderer.invoke("stats:recordPlay", song),
+  getStats: () => ipcRenderer.invoke("stats:get"),
+  getSimilarArtists: (artistName) => ipcRenderer.invoke("recommendations:getSimilarArtists", artistName),
+  getDiscoverTracks: (artistName) => ipcRenderer.invoke("recommendations:getDiscoverTracks", artistName)
 });

@@ -8,7 +8,8 @@ import {
   PlaylistIcon,
   PlusIcon,
   SidebarToggleIcon,
-  SettingsIcon
+  SettingsIcon,
+  StatsIcon
 } from '../icons/Icons';
 
 interface SidebarProps {
@@ -113,6 +114,14 @@ export function Sidebar({
           >
             <ArtistsIcon size={18} />
             {!isCompact && <span>Artists</span>}
+          </li>
+          <li
+            className={`nav-item ${currentTab === 'statistics' ? 'active' : ''}`}
+            onClick={() => onSelectTab('statistics')}
+            title="Statistics"
+          >
+            <StatsIcon size={18} />
+            {!isCompact && <span>Statistics</span>}
           </li>
         </ul>
       </div>

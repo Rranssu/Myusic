@@ -1,0 +1,315 @@
+/* =======================================================
+   Apple Music Replay & Professional Telemetry Dashboard
+======================================================= */
+.statistics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 60px;
+}
+
+.stats-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.stats-page-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  color: #ffffff !important;
+}
+
+.stats-page-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+/* Bento-Box Grid Layout */
+.stats-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+}
+
+.bento-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  transition: transform var(--transition-normal), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.bento-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.bento-hero {
+  grid-column: span 6;
+  background: linear-gradient(135deg, rgba(250, 45, 72, 0.22) 0%, rgba(94, 63, 224, 0.18) 100%);
+  border: 1px solid rgba(250, 45, 72, 0.25);
+}
+
+.bento-stat {
+  grid-column: span 3;
+}
+
+@media (max-width: 980px) {
+  .bento-hero { grid-column: span 12; }
+  .bento-stat { grid-column: span 6; }
+}
+
+@media (max-width: 640px) {
+  .bento-stat { grid-column: span 12; }
+}
+
+.bento-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+}
+
+.bento-big-number {
+  font-size: 3.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.bento-medium-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.bento-subtext {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Replay SVG Spline Chart Card */
+.replay-chart-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chart-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.chart-svg-viewport {
+  width: 100%;
+  height: 220px;
+}
+
+/* Split Leaderboard Grid (Top Songs & Top Artists) */
+.replay-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+@media (max-width: 900px) {
+  .replay-split-grid { grid-template-columns: 1fr; }
+}
+
+.leaderboard-column {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(25px);
+  border-radius: var(--radius-xl);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.leaderboard-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  letter-spacing: -0.3px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.leaderboard-row:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(3px);
+}
+
+.leaderboard-rank {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+  width: 22px;
+  text-align: center;
+}
+
+.leaderboard-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #202028;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.leaderboard-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.leaderboard-thumb.artist-avatar {
+  border-radius: 50%;
+}
+.leaderboard-thumb.artist-avatar img {
+  border-radius: 50%;
+}
+
+.leaderboard-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-item-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.leaderboard-item-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.leaderboard-item-sub {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboard-count-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Engine Telemetry Pane */
+.telemetry-pane {
+  background: rgba(14, 14, 18, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.telemetry-grid-modern {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.telemetry-cell {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.telemetry-key-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.telemetry-val-body {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #27c93f;
+  box-shadow: 0 0 8px #27c93f;
+  animation: pulseLive 2s infinite;
+}
+
+@keyframes pulseLive {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 14px #27c93f; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}

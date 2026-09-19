@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Artist, Album, Song } from '../types/music';
 import {
   ArrowLeftIcon,
@@ -17,6 +17,7 @@ export interface ArtistDetailPageProps {
   onBack: () => void;
   onPlaySong?: (song: Song, songsList?: Song[]) => void;
   onSelectAlbum?: (album: Album) => void;
+  onSelectArtist?: (artistName: string) => void;
   onOpenTrackMenu?: (e: React.MouseEvent, song: Song) => void;
 }
 
@@ -33,10 +34,12 @@ export function ArtistDetailPage({
   onBack,
   onPlaySong,
   onSelectAlbum,
+  onSelectArtist,
   onOpenTrackMenu
 }: ArtistDetailPageProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showBio, setShowBio] = useState(false);
+  const [similarArtists, setSimilarArtists] = useState<any[]>([]);
 
   // Filter songs & albums by this artist
   const artistSongs = allSongs.filter(
@@ -46,7 +49,18 @@ export function ArtistDetailPage({
     (a) => a.artist.toLowerCase() === artist.name.toLowerCase()
   );
 
-  // Determine the "Most Played / Top Album" (highest track count in library)
+  // Fetch similar artists online (Phase 6 Music Graph)
+  useEffect(() => {
+    if (artist.name && window.electronAPI?.getSimilarArtists) {
+      window.electronAPI.getSimilarArtists(artist.name).then((res: any) => {
+        if (res && Array.isArray(res)) {
+          setSimilarArtists(res);
+        }
+      });
+    }
+  }, [artist.name]);
+
+  // Determine Most Played / Top Album
   const mostPlayedAlbum = useMemo<Album | null>(() => {
     if (artistAlbums.length === 0) return null;
     return artistAlbums.reduce((prev, curr) =>
@@ -56,7 +70,7 @@ export function ArtistDetailPage({
 
   return (
     <div className="artist-page-fullbleed">
-      {/* 1. Extended Panoramic Hero Header */}
+      {/* 1. Full-Bleed Panoramic Hero Header */}
       <div className="artist-hero-parallax">
         {/* Floating Top Navigation */}
         <div className="artist-hero-nav">
@@ -65,7 +79,7 @@ export function ArtistDetailPage({
           </button>
         </div>
 
-        {/* Full-Width Background Photo with Extended Framing */}
+        {/* Full-Width Background Photo with Soft Bottom Dissolve */}
         <div className="artist-hero-media">
           {artist.artworkUrl ? (
             <img src={artist.artworkUrl} alt={artist.name} className="artist-hero-img" />
@@ -74,11 +88,10 @@ export function ArtistDetailPage({
               <ArtistsIcon size={120} color="rgba(255, 255, 255, 0.25)" />
             </div>
           )}
-          {/* Multi-stop smooth bottom dissolve */}
           <div className="artist-hero-gradient-overlay" />
         </div>
 
-        {/* Centered Artist Name & Action Cluster */}
+        {/* Centered Artist Name & 3-Button Action Cluster */}
         <div className="artist-hero-center-cluster">
           <h1 className="artist-hero-name">{artist.name}</h1>
 
@@ -93,7 +106,7 @@ export function ArtistDetailPage({
               <span>i</span>
             </button>
 
-            {/* Large Play Button */}
+            {/* Giant Center Play Button */}
             <button
               className="artist-cluster-play-btn"
               onClick={() => artistSongs[0] && onPlaySong?.(artistSongs[0], artistSongs)}
@@ -293,6 +306,34 @@ export function ArtistDetailPage({
                   <div className="music-card-info">
                     <h4>{album.title}</h4>
                     <p>{album.year ? `${album.year}` : `${album.songCount} songs`}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 5. Similar Artists Shelf (Phase 6) */}
+        {similarArtists.length > 0 && (
+          <section className="artist-content-section" style={{ marginTop: '48px' }}>
+            <div className="section-header">
+              <h3 className="section-title">Similar Artists</h3>
+            </div>
+            <div className="grid-cards">
+              {similarArtists.slice(0, 6).map((sim) => (
+                <div
+                  key={sim.id}
+                  className="music-card artist-card"
+                  onClick={() => onSelectArtist?.(sim.name)}
+                >
+                  <div className="music-card-artwork artist-avatar">
+                    <img src={sim.artworkUrl} alt={sim.name} />
+                  </div>
+                  <div className="music-card-info" style={{ textAlign: 'center' }}>
+                    <h4>{sim.name}</h4>
+                    <p style={{ color: sim.inLibrary ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
+                      {sim.inLibrary ? 'In Library' : 'Similar Style'}
+                    </p>
                   </div>
                 </div>
               ))}

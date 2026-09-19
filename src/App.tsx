@@ -10,6 +10,9 @@ import './styles/detail-views.css';
 import './styles/playlists.css';
 import './styles/context-menu.css';
 
+import './styles/statistics.css';
+import { StatisticsPage } from './pages/StatisticsPage';
+
 import type { NavigationTab, LibraryData, Album, Artist, Playlist, Song } from './types/music';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useAppTheme } from './hooks/useAppTheme';
@@ -34,6 +37,7 @@ import { PlaylistsPage } from './pages/PlaylistsPage';
 import { PlaylistDetailPage } from './pages/PlaylistDetailPage';
 import { SearchPage } from './pages/SearchPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { TopBar } from './components/layout/TopBar';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('home');
@@ -165,6 +169,7 @@ export function App() {
 
   return (
     <div className="app-container">
+      
       <GlobalAurora activeThemeSource={activeThemeSource} palette={appPalette} />
 
       <Sidebar
@@ -178,6 +183,7 @@ export function App() {
       />
 
       <main className="app-viewport">
+        <TopBar />
         <div className="app-content">
           <div key={currentViewKey} className="page-transition-container">
             {selectedPlaylist ? (
@@ -239,6 +245,7 @@ export function App() {
                 )}
                 {currentTab === 'albums' && <AlbumsPage albums={library.albums} onSelectAlbum={handleOpenAlbum} />}
                 {currentTab === 'artists' && <ArtistsPage artists={library.artists} onSelectArtist={setSelectedArtist} />}
+                {currentTab === 'statistics' && <StatisticsPage library={library} />}
                 {currentTab === 'playlists' && (
                   <PlaylistsPage
                     playlists={playlists}

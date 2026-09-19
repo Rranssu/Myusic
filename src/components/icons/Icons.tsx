@@ -237,3 +237,12 @@ export const ExitFullScreenIcon: React.FC<IconProps> = ({ size = 18, color = 'cu
     <path d="M4 14h6m0 0v6m0-6-7 7m17-11h-6m0 0V4m0 6 7-7m-7 17v-6m0 0h6m-6 0 7 7M10 4v6m0 0H4m6 0L3 3" />
   </svg>
 );
+
+export const StatsIcon: React.FC<IconProps> = ({ size = 18, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10" />
+    <line x1="12" y1="20" x2="12" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="14" />
+    <line x1="2" y1="20" x2="22" y2="20" />
+  </svg>
+);

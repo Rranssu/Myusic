@@ -1,7 +1,16 @@
-export type NavigationTab = 'search' | 'home' | 'songs' | 'albums' | 'artists' | 'playlists' | 'settings';
+export type NavigationTab = 'search' | 'home' | 'songs' | 'albums' | 'artists' | 'playlists' | 'settings' | 'statistics';
+
+export interface PlaybackStats {
+  songPlayCounts: Record<string, number>;
+  artistPlayCounts: Record<string, number>;
+  albumPlayCounts: Record<string, number>;
+  totalPlays: number;
+  lastPlayedSongId?: string;
+  dailyHistory?: Record<string, number>; // "YYYY-MM-DD" -> count
+}
 
 export interface LyricLine {
-  time: number; // in seconds (-1 if unsynced)
+  time: number;
   text: string;
 }
 
@@ -16,12 +25,14 @@ export interface Song {
   title: string;
   artist: string;
   album: string;
-  duration: number; // in seconds
+  duration: number;
   trackNumber?: number;
   year?: number;
   artworkUrl?: string;
   animatedArtworkUrl?: string;
   lyrics?: LyricsData;
+  isExternal?: boolean;
+  previewUrl?: string;
 }
 
 export interface Album {
@@ -63,7 +74,31 @@ export interface LibraryData {
   lastScanned: number;
 }
 
-// Global Electron API Definition for React
+export interface PlaybackStats {
+  songPlayCounts: Record<string, number>;
+  artistPlayCounts: Record<string, number>;
+  albumPlayCounts: Record<string, number>;
+  totalPlays: number;
+  lastPlayedSongId?: string;
+}
+
+export interface RecommendedTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  artworkUrl: string;
+  previewUrl: string;
+  isExternal: true;
+}
+
+export interface SimilarArtist {
+  id: string;
+  name: string;
+  artworkUrl: string;
+  inLibrary: boolean;
+}
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -94,6 +129,12 @@ declare global {
 
       // System
       showItemInFolder: (fullPath: string) => Promise<boolean>;
+
+      // Phase 6 Analytics & Recommendations
+      recordPlay: (song: Song) => Promise<void>;
+      getStats: () => Promise<PlaybackStats>;
+      getSimilarArtists: (artistName: string) => Promise<SimilarArtist[]>;
+      getDiscoverTracks: (artistName: string) => Promise<RecommendedTrack[]>;
     };
   }
 }

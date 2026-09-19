@@ -33,7 +33,7 @@ function createWindow() {
     height: 900,
     minWidth: 1080,
     minHeight: 720,
-    frame: true,
+    frame: false,
     backgroundMaterial: "acrylic",
     backgroundColor: "#00000000",
     autoHideMenuBar: true,

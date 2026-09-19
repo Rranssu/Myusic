@@ -3,6 +3,7 @@ const path = require("path");
 const { dialog, ipcMain, shell } = require("electron");
 const { getAudioFilesRecursive, parseTracks, hashString } = require("./scanner.cjs");
 const { readPlaylists, savePlaylist, deletePlaylist } = require("./playlists.cjs");
+const { RecommendationService } = require("./recommendationService.cjs");
 
 function registerIpcHandlers({
   getMainWindow,
@@ -291,6 +292,74 @@ function registerIpcHandlers({
   ipcMain.handle("playlists:get", async () => readPlaylists(playlistsFilePath));
   ipcMain.handle("playlists:save", async (_event, pl) => savePlaylist(playlistsFilePath, pl));
   ipcMain.handle("playlists:delete", async (_event, id) => deletePlaylist(playlistsFilePath, id));
+
+  const statsFilePath = path.join(userDataPath, "stats.json");
+  const recommendationService = new RecommendationService();
+
+  function readStats() {
+    if (fs.existsSync(statsFilePath)) {
+      try {
+        return JSON.parse(fs.readFileSync(statsFilePath, "utf-8"));
+      } catch (e) {}
+    }
+    return {
+      songPlayCounts: {},
+      artistPlayCounts: {},
+      albumPlayCounts: {},
+      totalPlays: 0
+    };
+  }
+
+  // 9. Record Play Count and Listening Statistics
+ipcMain.handle("stats:recordPlay", async (_event, song) => {
+    if (!song || !song.id) return;
+    const stats = readStats();
+
+    stats.songPlayCounts[song.id] = (stats.songPlayCounts[song.id] || 0) + 1;
+    if (song.artist) {
+      stats.artistPlayCounts[song.artist] = (stats.artistPlayCounts[song.artist] || 0) + 1;
+    }
+    if (song.album) {
+      stats.albumPlayCounts[song.album] = (stats.albumPlayCounts[song.album] || 0) + 1;
+    }
+    stats.totalPlays = (stats.totalPlays || 0) + 1;
+    stats.lastPlayedSongId = song.id;
+
+    // Track daily history for charts
+    if (!stats.dailyHistory) stats.dailyHistory = {};
+    const today = new Date().toISOString().split("T")[0];
+    stats.dailyHistory[today] = (stats.dailyHistory[today] || 0) + 1;
+
+    fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2), "utf-8");
+  });
+
+  ipcMain.handle("stats:get", async () => {
+    return readStats();
+  });
+
+  // 10. Query Similar Artists
+// 10. Query Similar Artists
+  ipcMain.handle("recommendations:getSimilarArtists", async (_event, artistName) => {
+    try {
+      const library = JSON.parse(fs.readFileSync(dbFilePath, "utf-8"));
+      return await recommendationService.getSimilarArtists(artistName, library.artists || []);
+    } catch (err) {
+      console.error("IPC getSimilarArtists error:", err);
+      return [];
+    }
+  });
+
+  // 11. Discover Out-of-Library Songs with Previews
+  ipcMain.handle("recommendations:getDiscoverTracks", async (_event, artistName) => {
+    try {
+      const library = JSON.parse(fs.readFileSync(dbFilePath, "utf-8"));
+      const localTitles = (library.songs || []).map((s) => s.title);
+      return await recommendationService.getDiscoverTracks(artistName, localTitles);
+    } catch (err) {
+      console.error("IPC getDiscoverTracks error:", err);
+      return [];
+    }
+  });
 }
 
 module.exports = { registerIpcHandlers };

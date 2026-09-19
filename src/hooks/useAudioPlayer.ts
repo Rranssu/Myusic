@@ -61,7 +61,6 @@ export function useAudioPlayer() {
     return activeChannelRef.current === '1' ? audio2Ref.current : audio1Ref.current;
   }, []);
 
-  // Set & Persist Crossfade Duration
   const setCrossfadeDuration = (seconds: number) => {
     const clamped = Math.max(0, Math.min(12, seconds));
     setCrossfadeDurationState(clamped);
@@ -69,22 +68,27 @@ export function useAudioPlayer() {
     localStorage.setItem('myusic_crossfade', clamped.toString());
   };
 
-  // Play song on a specific channel
-  const playOnChannel = useCallback((song: Song, targetAudio: HTMLAudioElement | null, targetVol: number) => {
+  const playOnChannel = useCallback((song: Song | any, targetAudio: HTMLAudioElement | null, targetVol: number) => {
     if (!targetAudio) return;
-    targetAudio.src = `atom://track?path=${encodeURIComponent(song.filePath)}`;
+
+    // Stream directly via HTTPS if external preview track; otherwise use atom://
+    const streamUrl = song.isExternal && song.previewUrl
+      ? song.previewUrl
+      : `atom://track?path=${encodeURIComponent(song.filePath)}`;
+
+    targetAudio.src = streamUrl;
     targetAudio.volume = targetVol;
     targetAudio.currentTime = 0;
+    (targetAudio as any)._hasRecordedPlay = false;
+
     targetAudio
       .play()
       .then(() => setIsPlaying(true))
       .catch((err) => console.error("Playback error:", err));
   }, []);
 
-  // Standard Play Song
   const playSong = useCallback(
-    (song: Song, songList: Song[] = []) => {
-      // Clear any pending crossfade transition
+    (song: Song | any, songList: (Song | any)[] = []) => {
       if (crossfadeTimerRef.current) {
         clearInterval(crossfadeTimerRef.current);
         crossfadeTimerRef.current = null;
@@ -92,7 +96,7 @@ export function useAudioPlayer() {
       isCrossfadingRef.current = false;
 
       const activeQueue = songList.length > 0 ? songList : [song];
-      const index = activeQueue.findIndex((s) => s.filePath === song.filePath || s.id === song.id);
+      const index = activeQueue.findIndex((s) => (s.filePath && s.filePath === song.filePath) || s.id === song.id);
 
       setQueue(activeQueue);
       setQueueIndex(index !== -1 ? index : 0);
@@ -102,7 +106,6 @@ export function useAudioPlayer() {
       setDuration(initialDuration);
       setCurrentTime(0);
 
-      // Stop secondary channel if playing
       const inactive = getInactiveAudio();
       if (inactive) {
         inactive.pause();
@@ -115,7 +118,6 @@ export function useAudioPlayer() {
     [getActiveAudio, getInactiveAudio, playOnChannel]
   );
 
-  // Compute next track index
   const getNextTrackIndex = useCallback(() => {
     const currentQ = queueRef.current;
     const currentIndex = queueIndexRef.current;
@@ -151,22 +153,18 @@ export function useAudioPlayer() {
     const xfadeSec = crossfadeRef.current;
     const masterVol = volumeRef.current;
 
-    console.log(`[Audio Engine] 🎚️ Starting ${xfadeSec}s crossfade $\to$ "${nextSong.title}"`);
-
-    // Prepare incoming channel
     playOnChannel(nextSong, incomingAudio, 0);
 
-    // Update UI info to next track as it begins fading in
     setQueueIndex(nextIdx);
     setCurrentSong(nextSong);
 
-    const steps = 30; // 30 volume adjustment steps
+    const steps = 30;
     const stepInterval = (xfadeSec * 1000) / steps;
     let stepCount = 0;
 
     crossfadeTimerRef.current = setInterval(() => {
       stepCount++;
-      const progress = stepCount / steps; // 0 to 1
+      const progress = stepCount / steps;
 
       if (outgoingAudio) {
         outgoingAudio.volume = Math.max(0, masterVol * (1 - progress));
@@ -179,7 +177,6 @@ export function useAudioPlayer() {
         if (crossfadeTimerRef.current) clearInterval(crossfadeTimerRef.current);
         crossfadeTimerRef.current = null;
 
-        // Finalize transition: Stop outgoing audio and swap active channels
         if (outgoingAudio) {
           outgoingAudio.pause();
           outgoingAudio.src = '';
@@ -188,12 +185,10 @@ export function useAudioPlayer() {
 
         activeChannelRef.current = activeChannelRef.current === '1' ? '2' : '1';
         isCrossfadingRef.current = false;
-        console.log(`[Audio Engine] ✅ Crossfade complete.`);
       }
     }, stepInterval);
   }, [getActiveAudio, getInactiveAudio, getNextTrackIndex, playOnChannel]);
 
-  // Standard Next Track
   const handleNext = useCallback(() => {
     if (crossfadeTimerRef.current) {
       clearInterval(crossfadeTimerRef.current);
@@ -209,7 +204,6 @@ export function useAudioPlayer() {
     }
   }, [getNextTrackIndex, playSong]);
 
-  // Standard Previous Track
   const handlePrev = useCallback(() => {
     if (crossfadeTimerRef.current) {
       clearInterval(crossfadeTimerRef.current);
@@ -232,7 +226,6 @@ export function useAudioPlayer() {
     }
   }, [getActiveAudio, playSong]);
 
-  // Check for crossfade threshold on audio progress
   const checkCrossfadeTrigger = useCallback((audio: HTMLAudioElement) => {
     const xfadeSec = crossfadeRef.current;
     if (xfadeSec <= 0 || isCrossfadingRef.current) return;
@@ -246,11 +239,12 @@ export function useAudioPlayer() {
   }, [startCrossfade]);
 
   // Initialize both channels
+ // Initialize both channels once on mount (Removed `volume` from dependency array)
   useEffect(() => {
     const a1 = new Audio();
     const a2 = new Audio();
-    a1.volume = volume;
-    a2.volume = volume;
+    a1.volume = volumeRef.current;
+    a2.volume = volumeRef.current;
 
     audio1Ref.current = a1;
     audio2Ref.current = a2;
@@ -260,8 +254,12 @@ export function useAudioPlayer() {
         if (activeChannelRef.current === channel && !isCrossfadingRef.current) {
           setCurrentTime(audio.currentTime);
           checkCrossfadeTrigger(audio);
+
+          if (audio.currentTime >= 15 && currentSongRef.current && !(audio as any)._hasRecordedPlay) {
+            (audio as any)._hasRecordedPlay = true;
+            window.electronAPI?.recordPlay?.(currentSongRef.current);
+          }
         } else if (isCrossfadingRef.current && activeChannelRef.current !== channel) {
-          // If crossfading, let incoming channel drive time
           setCurrentTime(audio.currentTime);
         }
       };
@@ -273,7 +271,6 @@ export function useAudioPlayer() {
       };
 
       audio.onended = () => {
-        // Only trigger ended if not currently executing a crossfade
         if (!isCrossfadingRef.current && activeChannelRef.current === channel) {
           handleNext();
         }
@@ -288,22 +285,30 @@ export function useAudioPlayer() {
       a2.pause(); a2.src = '';
       if (crossfadeTimerRef.current) clearInterval(crossfadeTimerRef.current);
     };
-  }, [checkCrossfadeTrigger, handleNext, volume]);
-
+  }, [checkCrossfadeTrigger, handleNext]); // <-- Cleaned: no more `volume` dependency
   // Windows Media Session Sync
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
 
     if (currentSong) {
+      const art = currentSong.artworkUrl;
+      const isAllowedScheme = Boolean(
+        art &&
+        (art.startsWith('http://') ||
+         art.startsWith('https://') ||
+         art.startsWith('data:') ||
+         art.startsWith('blob:'))
+      );
+
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title,
         artist: currentSong.artist,
         album: currentSong.album,
-        artwork: currentSong.artworkUrl
+        artwork: isAllowedScheme && art
           ? [
-              { src: currentSong.artworkUrl, sizes: '96x96', type: 'image/jpeg' },
-              { src: currentSong.artworkUrl, sizes: '256x256', type: 'image/jpeg' },
-              { src: currentSong.artworkUrl, sizes: '512x512', type: 'image/jpeg' }
+              { src: art, sizes: '96x96', type: 'image/jpeg' },
+              { src: art, sizes: '256x256', type: 'image/jpeg' },
+              { src: art, sizes: '512x512', type: 'image/jpeg' }
             ]
           : []
       });
@@ -351,7 +356,6 @@ export function useAudioPlayer() {
     setCurrentTime(clamped);
   }, [duration, getActiveAudio]);
 
-  // Windows Hardware Media Key Listeners
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
 
@@ -450,3 +454,5 @@ export function useAudioPlayer() {
     addToQueue
   };
 }
+
+export default useAudioPlayer;
