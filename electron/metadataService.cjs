@@ -274,55 +274,90 @@ class MetadataService {
   }
 
   // 4. Fetch Artist Studio Portrait & Biography (Wikipedia + Deezer)
+// 3. Fetch Wide Landscape Artist Banner (TheAudioDB 1080p Fanart + Wikipedia + Deezer)
   async fetchArtistMetadata(artistName) {
     try {
-      console.log(`[Artist Metadata] 🔍 Searching biography & portrait for "${artistName}"...`);
+      console.log(`[Artist Metadata] 🔍 Searching wide landscape banner & biography for "${artistName}"...`);
       let description = null;
       let photoUrl = null;
 
-      const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
-      const wikiRes = await fetch(wikiUrl, {
-        headers: { "User-Agent": "Myusic/1.0 ( desktop music player )" }
-      });
+      // A. Priority 1: TheAudioDB (Specialized 16:9 / 1920x1080 Landscape Backdrops)
+      try {
+        const adbUrl = `https://www.theaudiodb.com/api/v1/json/2/search.php?s=${encodeURIComponent(artistName)}`;
+        const adbRes = await fetch(adbUrl);
+        if (adbRes.ok) {
+          const adbData = await adbRes.json();
+          const adbArtist = adbData?.artists?.[0];
+          if (adbArtist) {
+            // Pick native 16:9 wide fanart or landscape thumbnail
+            photoUrl = adbArtist.strArtistFanart || adbArtist.strArtistWideThumb || adbArtist.strArtistBanner || null;
 
-      if (wikiRes.ok) {
-        const wikiData = await wikiRes.json();
-        if (wikiData.extract) {
-          description = wikiData.extract;
-          console.log(`[Artist Metadata] 📖 Found Wikipedia biography for "${artistName}"`);
-        }
-        if (wikiData.originalimage?.source || wikiData.thumbnail?.source) {
-          photoUrl = wikiData.originalimage?.source || wikiData.thumbnail?.source;
-          console.log(`[Artist Metadata] 🖼️  Found Wikipedia portrait for "${artistName}"`);
-        }
-      }
+            if (adbArtist.strBiographyEN) {
+              const sentences = adbArtist.strBiographyEN.split(". ").slice(0, 3).join(". ") + ".";
+              description = sentences;
+            }
 
-      if (!photoUrl) {
-        const deezerUrl = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName)}&limit=1`;
-        const deezerRes = await fetch(deezerUrl);
-        if (deezerRes.ok) {
-          const deezerData = await deezerRes.json();
-          const artist = deezerData?.data?.[0];
-          if (artist && (artist.picture_xl || artist.picture_big)) {
-            photoUrl = artist.picture_xl || artist.picture_big;
-            console.log(`[Artist Metadata] 🖼️  Found Deezer 1000px portrait for "${artistName}"`);
+            if (photoUrl) {
+              console.log(`[Artist Metadata] 🌄 Found TheAudioDB 1080p landscape banner for "${artistName}"`);
+            }
           }
         }
+      } catch (e) {}
+
+      // B. Priority 2: Wikipedia REST API (High-Resolution Original Image + Biography)
+      if (!photoUrl || !description) {
+        try {
+          const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
+          const wikiRes = await fetch(wikiUrl, {
+            headers: { "User-Agent": "Myusic/1.0 ( desktop music player )" }
+          });
+          if (wikiRes.ok) {
+            const wikiData = await wikiRes.json();
+            if (!description && wikiData.extract) {
+              description = wikiData.extract;
+              console.log(`[Artist Metadata] 📖 Found Wikipedia biography for "${artistName}"`);
+            }
+            if (!photoUrl && (wikiData.originalimage?.source || wikiData.thumbnail?.source)) {
+              photoUrl = wikiData.originalimage?.source || wikiData.thumbnail?.source;
+              console.log(`[Artist Metadata] 🖼️  Found Wikipedia high-res image for "${artistName}"`);
+            }
+          }
+        } catch (e) {}
       }
 
+      // C. Priority 3: Deezer 1000px Studio Photo Fallback
+      if (!photoUrl) {
+        try {
+          const deezerUrl = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName)}&limit=1`;
+          const deezerRes = await fetch(deezerUrl);
+          if (deezerRes.ok) {
+            const deezerData = await deezerRes.json();
+            const artist = deezerData?.data?.[0];
+            if (artist && (artist.picture_xl || artist.picture_big)) {
+              photoUrl = artist.picture_xl || artist.picture_big;
+              console.log(`[Artist Metadata] 🖼️  Found Deezer 1000px image for "${artistName}"`);
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Download and cache the wide banner locally
       let localArtworkUrl = null;
       if (photoUrl) {
-        const artistSlug = require("crypto").createHash("md5").update(artistName).digest("hex");
-        const fileName = `artist_${artistSlug}.jpg`;
+        const artistSlug = Buffer.from(artistName).toString("base64").replace(/[/+=]/g, "").slice(0, 20);
+        const fileName = `artist_banner_${artistSlug}.jpg`;
         const diskPath = path.join(this.artworkCacheDir, fileName);
 
         if (!fs.existsSync(diskPath)) {
+          console.log(`[Artist Metadata] 📥 Downloading wide banner image...`);
           const imgRes = await fetch(photoUrl);
           if (imgRes.ok) {
             const buffer = Buffer.from(await imgRes.arrayBuffer());
             fs.writeFileSync(diskPath, buffer);
-            console.log(`[Artist Metadata] ✅ Saved artist photo to cache: ${fileName}`);
+            console.log(`[Artist Metadata] ✅ Saved wide banner to cache: ${fileName} (${Math.round(buffer.length / 1024)} KB)`);
           }
+        } else {
+          console.log(`[Artist Metadata] ⚡ Already cached locally: ${fileName}`);
         }
         localArtworkUrl = `atom://artwork/${fileName}`;
       }

@@ -60,14 +60,19 @@ export function App() {
   }, []);
 
   // Inherit animated artwork from parent album if present
-  const matchedSong = library.songs.find((s) => (player.currentSong?.filePath && s.filePath === player.currentSong.filePath) || s.id === player.currentSong?.id) || player.currentSong;
+  const matchedSong =
+    library.songs.find(
+      (s) => (player.currentSong?.filePath && s.filePath === player.currentSong.filePath) || s.id === player.currentSong?.id
+    ) || player.currentSong;
   const matchedAlbum = library.albums.find((a) => a.title.toLowerCase() === matchedSong?.album?.toLowerCase());
-  const activeSong = matchedSong ? { ...matchedSong, animatedArtworkUrl: matchedSong.animatedArtworkUrl || matchedAlbum?.animatedArtworkUrl } : null;
+  const activeSong = matchedSong
+    ? { ...matchedSong, animatedArtworkUrl: matchedSong.animatedArtworkUrl || matchedAlbum?.animatedArtworkUrl }
+    : null;
 
   // Global Dynamic Theme Hook
   const { appPalette, activeThemeSource } = useAppTheme({ selectedAlbum, selectedArtist, activeSong });
 
-  // Unique key identifying the active view (triggers page transition animation on change)
+  // Unique key identifying active view for fluid page transitions
   const currentViewKey = selectedPlaylist
     ? `playlist-${selectedPlaylist.id}`
     : selectedAlbum
@@ -76,39 +81,85 @@ export function App() {
     ? `artist-${selectedArtist.name}`
     : `tab-${currentTab}`;
 
-  // Reset scroll position to top whenever switching pages
+  // Reset scroll position on view switch
   useEffect(() => {
     const contentEl = document.querySelector('.app-content');
     if (contentEl) contentEl.scrollTop = 0;
   }, [currentViewKey]);
 
   // Navigation handlers
-  const handleSelectTab = (tab: NavigationTab) => { setSelectedAlbum(null); setSelectedArtist(null); setSelectedPlaylist(null); setCurrentTab(tab); };
-  const handleOpenAlbum = (album: Album) => { setSelectedArtist(null); setSelectedPlaylist(null); setSelectedAlbum(album); };
+  const handleSelectTab = (tab: NavigationTab) => {
+    setSelectedAlbum(null);
+    setSelectedArtist(null);
+    setSelectedPlaylist(null);
+    setCurrentTab(tab);
+  };
+
+  const handleOpenAlbum = (album: Album) => {
+    setSelectedArtist(null);
+    setSelectedPlaylist(null);
+    setSelectedAlbum(album);
+  };
+
   const handleOpenArtist = (name: string) => {
-    setSelectedAlbum(null); setSelectedPlaylist(null);
+    setSelectedAlbum(null);
+    setSelectedPlaylist(null);
     const found = library.artists.find((a) => a.name.toLowerCase() === name.toLowerCase());
     setSelectedArtist(found || { id: name, name, albumCount: 1, songCount: 1 });
   };
-  const handleOpenPlaylist = (pl: Playlist) => { setSelectedAlbum(null); setSelectedArtist(null); setSelectedPlaylist(pl); };
+
+  const handleOpenPlaylist = (pl: Playlist) => {
+    setSelectedAlbum(null);
+    setSelectedArtist(null);
+    setSelectedPlaylist(pl);
+  };
 
   // Playlist actions
   const handleSavePlaylist = async (pl: Playlist) => {
     const updated = await window.electronAPI?.savePlaylist?.(pl);
-    if (updated) { setPlaylists(updated); setSelectedPlaylist(pl); }
+    if (updated) {
+      setPlaylists(updated);
+      setSelectedPlaylist(pl);
+    }
   };
+
   const handleDeletePlaylist = async (id: string) => {
     const updated = await window.electronAPI?.deletePlaylist?.(id);
-    if (updated) { setPlaylists(updated); setSelectedPlaylist(null); }
+    if (updated) {
+      setPlaylists(updated);
+      setSelectedPlaylist(null);
+    }
   };
 
   const handleScanFolder = async () => {
     try {
       setIsScanning(true);
       const data = await window.electronAPI?.selectAndScanFolder?.();
-      if (data) { setLibrary(data); setCurrentTab('songs'); }
+      if (data) {
+        setLibrary(data);
+        setCurrentTab('songs');
+      }
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  // 3-Dot & Right-Click Context Menu Trigger
+  const handleOpenTrackMenu = (e: React.MouseEvent, song: Song) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.type === 'contextmenu') {
+      setContextMenu({
+        song,
+        position: { x: e.clientX, y: e.clientY }
+      });
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setContextMenu({
+        song,
+        position: { x: rect.right - 220, y: rect.bottom + 6 }
+      });
     }
   };
 
@@ -128,24 +179,30 @@ export function App() {
 
       <main className="app-viewport">
         <div className="app-content">
-          {/* Animated Page Transition Container */}
           <div key={currentViewKey} className="page-transition-container">
             {selectedPlaylist ? (
               <PlaylistDetailPage
                 playlist={selectedPlaylist}
                 allSongs={library.songs}
                 onBack={() => setSelectedPlaylist(null)}
-                onPlaySong={(song, list) => player.playSong(song, list)}
+                onPlaySong={(song: Song, list?: Song[]) => player.playSong(song, list)}
                 onUpdatePlaylist={handleSavePlaylist}
                 onDeletePlaylist={handleDeletePlaylist}
+                onOpenTrackMenu={handleOpenTrackMenu}
               />
             ) : selectedAlbum ? (
               <AlbumDetailPage
                 album={selectedAlbum}
                 allSongs={library.songs}
                 onBack={() => setSelectedAlbum(null)}
-                onPlaySong={(song, list) => player.playSong(song, list || library.songs.filter(s => s.album.toLowerCase() === selectedAlbum.title.toLowerCase()))}
+                onPlaySong={(song: Song, list?: Song[]) =>
+                  player.playSong(
+                    song,
+                    list || library.songs.filter((s) => s.album.toLowerCase() === selectedAlbum.title.toLowerCase())
+                  )
+                }
                 onSelectArtist={handleOpenArtist}
+                onOpenTrackMenu={handleOpenTrackMenu}
               />
             ) : selectedArtist ? (
               <ArtistDetailPage
@@ -153,24 +210,43 @@ export function App() {
                 allSongs={library.songs}
                 allAlbums={library.albums}
                 onBack={() => setSelectedArtist(null)}
-                onPlaySong={(song, list) => player.playSong(song, list || library.songs.filter(s => s.artist.toLowerCase() === selectedArtist.name.toLowerCase()))}
+                onPlaySong={(song: Song, list?: Song[]) =>
+                  player.playSong(
+                    song,
+                    list || library.songs.filter((s) => s.artist.toLowerCase() === selectedArtist.name.toLowerCase())
+                  )
+                }
                 onSelectAlbum={handleOpenAlbum}
+                onOpenTrackMenu={handleOpenTrackMenu}
               />
             ) : (
               <>
                 {currentTab === 'search' && <SearchPage />}
                 {currentTab === 'home' && (
-                <HomePage
-                  library={library}
-                  onScanFolderClick={handleScanFolder}
-                  onSelectAlbum={handleOpenAlbum}
-                  onPlaySong={(song, list) => player.playSong(song, list || library.songs)}
-                />
-              )}
-                {currentTab === 'songs' && <SongsPage songs={library.songs} onPlaySong={(song) => player.playSong(song, library.songs)} onOpenTrackMenu={(e, song) => setContextMenu({ song, position: { x: e.currentTarget.getBoundingClientRect().right - 220, y: e.currentTarget.getBoundingClientRect().bottom + 6 } })} />}
+                  <HomePage
+                    library={library}
+                    onScanFolderClick={handleScanFolder}
+                    onSelectAlbum={handleOpenAlbum}
+                    onPlaySong={(song: Song, list?: Song[]) => player.playSong(song, list || library.songs)}
+                  />
+                )}
+                {currentTab === 'songs' && (
+                  <SongsPage
+                    songs={library.songs}
+                    onPlaySong={(song: Song) => player.playSong(song, library.songs)}
+                    onOpenTrackMenu={handleOpenTrackMenu}
+                  />
+                )}
                 {currentTab === 'albums' && <AlbumsPage albums={library.albums} onSelectAlbum={handleOpenAlbum} />}
                 {currentTab === 'artists' && <ArtistsPage artists={library.artists} onSelectArtist={setSelectedArtist} />}
-                {currentTab === 'playlists' && <PlaylistsPage playlists={playlists} allSongs={library.songs} onSelectPlaylist={handleOpenPlaylist} onOpenNewModal={() => setIsNewPlaylistModalOpen(true)} />}
+                {currentTab === 'playlists' && (
+                  <PlaylistsPage
+                    playlists={playlists}
+                    allSongs={library.songs}
+                    onSelectPlaylist={handleOpenPlaylist}
+                    onOpenNewModal={() => setIsNewPlaylistModalOpen(true)}
+                  />
+                )}
                 {currentTab === 'settings' && (
                   <SettingsPage
                     library={library}
@@ -243,14 +319,23 @@ export function App() {
           onClose={() => setContextMenu(null)}
           onPlayNext={player.playNext}
           onAddToQueue={player.addToQueue}
-          onAddToPlaylist={(plId, sId) => {
-            const target = playlists.find(p => p.id === plId);
-            if (target && !target.songIds.includes(sId)) handleSavePlaylist({ ...target, songIds: [...target.songIds, sId] });
+          onAddToPlaylist={(plId: string, sId: string) => {
+            const target = playlists.find((p) => p.id === plId);
+            if (target && !target.songIds.includes(sId)) {
+              handleSavePlaylist({ ...target, songIds: [...target.songIds, sId] });
+            }
           }}
-          onGoToAlbum={(album) => { const f = library.albums.find(a => a.title.toLowerCase() === album.toLowerCase()); if (f) handleOpenAlbum(f); }}
+          onGoToAlbum={(albumTitle: string) => {
+            const f = library.albums.find((a) => a.title.toLowerCase() === albumTitle.toLowerCase());
+            if (f) handleOpenAlbum(f);
+          }}
           onGoToArtist={handleOpenArtist}
-          onFetchMetadata={(s) => window.electronAPI?.fetchForAlbum?.(s.artist, s.album).then(u => u && setLibrary(u))}
-          onFetchAnimated={(s) => window.electronAPI?.fetchForAlbum?.(s.artist, s.album).then(u => u && setLibrary(u))}
+          onFetchMetadata={(s: Song) =>
+            window.electronAPI?.fetchForAlbum?.(s.artist, s.album).then((u: LibraryData | null) => u && setLibrary(u))
+          }
+          onFetchAnimated={(s: Song) =>
+            window.electronAPI?.fetchForAlbum?.(s.artist, s.album).then((u: LibraryData | null) => u && setLibrary(u))
+          }
           onShowDetails={setDetailsSong}
         />
       )}

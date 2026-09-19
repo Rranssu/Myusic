@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Album, Song } from '../types/music';
-import { ArrowLeftIcon, PlayIcon, ShuffleIcon, AlbumsIcon } from '../components/icons/Icons';
+import { ArrowLeftIcon, PlayIcon, ShuffleIcon, AlbumsIcon, MoreHorizontalIcon } from '../components/icons/Icons';
 
-interface AlbumDetailPageProps {
+export interface AlbumDetailPageProps {
   album: Album;
   allSongs: Song[];
   onBack: () => void;
   onPlaySong?: (song: Song, albumSongs?: Song[]) => void;
   onSelectArtist?: (artistName: string) => void;
+  onOpenTrackMenu?: (e: React.MouseEvent, song: Song) => void;
 }
 
 function formatDuration(sec: number): string {
@@ -21,7 +22,8 @@ export function AlbumDetailPage({
   allSongs,
   onBack,
   onPlaySong,
-  onSelectArtist
+  onSelectArtist,
+  onOpenTrackMenu
 }: AlbumDetailPageProps) {
   const [videoError, setVideoError] = useState(false);
 
@@ -33,7 +35,7 @@ export function AlbumDetailPage({
   const totalSeconds = albumSongs.reduce((acc, s) => acc + s.duration, 0);
   const totalMinutes = Math.round(totalSeconds / 60);
 
-  const animatedUrl = album.animatedArtworkUrl || albumSongs.find(s => s.animatedArtworkUrl)?.animatedArtworkUrl;
+  const animatedUrl = album.animatedArtworkUrl || albumSongs.find((s) => s.animatedArtworkUrl)?.animatedArtworkUrl;
 
   return (
     <div className="detail-page-container album-page-adaptive">
@@ -45,7 +47,6 @@ export function AlbumDetailPage({
 
       {/* Album Header Hero */}
       <header className="album-detail-header">
-        {/* Animated Artwork Card with Static Cover Fallback */}
         <div
           className="album-detail-artwork"
           style={{ boxShadow: `0 24px 60px rgba(0, 0, 0, 0.7), 0 0 35px var(--accent-glow)` }}
@@ -134,6 +135,7 @@ export function AlbumDetailPage({
               key={song.id}
               className="song-row album-song-row"
               onDoubleClick={() => onPlaySong?.(song, albumSongs)}
+              onContextMenu={(e) => onOpenTrackMenu?.(e, song)}
             >
               <div className="col-num">
                 <span className="track-index">{song.trackNumber || idx + 1}</span>
@@ -151,7 +153,17 @@ export function AlbumDetailPage({
                 <span className="song-name-text">{song.title}</span>
               </div>
 
-              <span className="col-time">{formatDuration(song.duration)}</span>
+              <div className="col-time" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                <span>{formatDuration(song.duration)}</span>
+                <button
+                  className="row-more-btn"
+                  onClick={(e) => onOpenTrackMenu?.(e, song)}
+                  title="More Actions"
+                  type="button"
+                >
+                  <MoreHorizontalIcon size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

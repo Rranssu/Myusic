@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Artist, Album, Song } from '../types/music';
-import { ArrowLeftIcon, PlayIcon, ShuffleIcon, ArtistsIcon, AlbumsIcon } from '../components/icons/Icons';
+import {
+  ArrowLeftIcon,
+  PlayIcon,
+  ShuffleIcon,
+  StarIcon,
+  ArtistsIcon,
+  AlbumsIcon,
+  MoreHorizontalIcon
+} from '../components/icons/Icons';
 
-interface ArtistDetailPageProps {
+export interface ArtistDetailPageProps {
   artist: Artist;
   allSongs: Song[];
   allAlbums: Album[];
   onBack: () => void;
   onPlaySong?: (song: Song, songsList?: Song[]) => void;
   onSelectAlbum?: (album: Album) => void;
+  onOpenTrackMenu?: (e: React.MouseEvent, song: Song) => void;
 }
 
 function formatDuration(sec: number): string {
@@ -23,8 +32,13 @@ export function ArtistDetailPage({
   allAlbums,
   onBack,
   onPlaySong,
-  onSelectAlbum
+  onSelectAlbum,
+  onOpenTrackMenu
 }: ArtistDetailPageProps) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showBio, setShowBio] = useState(false);
+
+  // Filter songs & albums by this artist
   const artistSongs = allSongs.filter(
     (s) => s.artist.toLowerCase() === artist.name.toLowerCase()
   );
@@ -32,134 +46,260 @@ export function ArtistDetailPage({
     (a) => a.artist.toLowerCase() === artist.name.toLowerCase()
   );
 
+  // Determine the "Most Played / Top Album" (highest track count in library)
+  const mostPlayedAlbum = useMemo<Album | null>(() => {
+    if (artistAlbums.length === 0) return null;
+    return artistAlbums.reduce((prev, curr) =>
+      (curr.songCount || 0) > (prev.songCount || 0) ? curr : prev
+    , artistAlbums[0]);
+  }, [artistAlbums]);
+
   return (
-    <div className="detail-page-container artist-page-adaptive">
-      {/* Back Navigation Button */}
-      <button className="back-nav-btn" onClick={onBack} type="button">
-        <ArrowLeftIcon size={16} />
-        <span>Back</span>
-      </button>
+    <div className="artist-page-fullbleed">
+      {/* 1. Extended Panoramic Hero Header */}
+      <div className="artist-hero-parallax">
+        {/* Floating Top Navigation */}
+        <div className="artist-hero-nav">
+          <button className="artist-circle-nav-btn" onClick={onBack} title="Back" type="button">
+            <ArrowLeftIcon size={18} color="#ffffff" />
+          </button>
+        </div>
 
-      {/* Artist Hero Header */}
-      <header className="artist-detail-header">
-        <div
-          className="artist-detail-avatar"
-          style={{ boxShadow: `0 24px 60px rgba(0, 0, 0, 0.7), 0 0 40px var(--accent-glow)` }}
-        >
+        {/* Full-Width Background Photo with Extended Framing */}
+        <div className="artist-hero-media">
           {artist.artworkUrl ? (
-            <img src={artist.artworkUrl} alt={artist.name} />
+            <img src={artist.artworkUrl} alt={artist.name} className="artist-hero-img" />
           ) : (
-            <ArtistsIcon size={80} color="rgba(255, 255, 255, 0.3)" />
+            <div className="artist-hero-fallback">
+              <ArtistsIcon size={120} color="rgba(255, 255, 255, 0.25)" />
+            </div>
           )}
+          {/* Multi-stop smooth bottom dissolve */}
+          <div className="artist-hero-gradient-overlay" />
         </div>
 
-        <div className="artist-detail-meta">
-          <span className="detail-tag">Artist</span>
-          <h1 className="artist-detail-title">{artist.name}</h1>
+        {/* Centered Artist Name & Action Cluster */}
+        <div className="artist-hero-center-cluster">
+          <h1 className="artist-hero-name">{artist.name}</h1>
 
-          <div className="album-detail-submeta">
-            <span>{artistSongs.length} tracks • {artistAlbums.length} {artistAlbums.length === 1 ? 'album' : 'albums'} in library</span>
-          </div>
-
-          {/* About / Biography Box */}
-          <div className="detail-description-box" style={{ maxWidth: '640px' }}>
-            <span className="editors-notes-tag">About {artist.name}</span>
-            <p className="detail-description">
-              {artist.description
-                ? artist.description
-                : `${artist.name} is a featured artist in your library with ${artistSongs.length} local audio tracks.`}
-            </p>
-          </div>
-
-          <div className="detail-action-buttons">
+          <div className="artist-action-cluster">
+            {/* Info / Bio Toggle */}
             <button
-              className="btn-primary"
+              className={`artist-cluster-btn info-btn ${showBio ? 'active' : ''}`}
+              onClick={() => setShowBio(!showBio)}
+              title="Artist Biography & Info"
+              type="button"
+            >
+              <span>i</span>
+            </button>
+
+            {/* Large Play Button */}
+            <button
+              className="artist-cluster-play-btn"
               onClick={() => artistSongs[0] && onPlaySong?.(artistSongs[0], artistSongs)}
+              title="Play Artist"
               type="button"
             >
-              <PlayIcon size={15} color="#ffffff" />
-              <span>Play</span>
+              <PlayIcon size={24} color="#000000" />
             </button>
+
+            {/* Favorite Star Button */}
             <button
-              className="btn-secondary"
-              onClick={() => {
-                const random = artistSongs[Math.floor(Math.random() * artistSongs.length)];
-                if (random) onPlaySong?.(random, artistSongs);
-              }}
+              className={`artist-cluster-btn star-btn ${isFavorite ? 'favorite-active' : ''}`}
+              onClick={() => setIsFavorite(!isFavorite)}
+              title="Favorite Artist"
               type="button"
             >
-              <ShuffleIcon size={15} color="#ffffff" />
-              <span>Shuffle</span>
+              <StarIcon size={20} color={isFavorite ? "#fa2d48" : "#ffffff"} />
             </button>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Discography Section */}
-      {artistAlbums.length > 0 && (
-        <section style={{ marginBottom: '40px', position: 'relative', zIndex: 1 }}>
-          <h3 className="section-title" style={{ marginBottom: '16px' }}>Albums</h3>
-          <div className="grid-cards">
-            {artistAlbums.map((album) => (
-              <div
-                key={album.id}
-                className="music-card"
-                onClick={() => onSelectAlbum?.(album)}
-              >
-                <div className="music-card-artwork">
-                  {album.artworkUrl ? (
-                    <img src={album.artworkUrl} alt={album.title} />
-                  ) : (
-                    <AlbumsIcon size={44} color="#353542" />
-                  )}
+      {/* Main Content Area */}
+      <div className="artist-main-content">
+        {/* Toggleable "About" Editorial Biography Card */}
+        {showBio && (
+          <div className="artist-bio-card-expand">
+            <div className="detail-description-box" style={{ maxWidth: '100%', marginBottom: '36px' }}>
+              <span className="editors-notes-tag">About {artist.name}</span>
+              <p className="detail-description">
+                {artist.description
+                  ? artist.description
+                  : `${artist.name} is a featured artist in your collection with ${artistSongs.length} local audio tracks across ${artistAlbums.length} albums.`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Most Played Album Big Showcase Card */}
+        {mostPlayedAlbum && (
+          <div
+            className="artist-big-featured-card"
+            onClick={() => onSelectAlbum?.(mostPlayedAlbum)}
+          >
+            <div className="big-featured-artwork-wrap">
+              {mostPlayedAlbum.artworkUrl ? (
+                <img
+                  src={mostPlayedAlbum.artworkUrl}
+                  alt={mostPlayedAlbum.title}
+                  className="big-featured-artwork"
+                />
+              ) : (
+                <div className="big-featured-artwork-placeholder">
+                  <AlbumsIcon size={56} color="rgba(255, 255, 255, 0.3)" />
                 </div>
-                <div className="music-card-info">
-                  <h4>{album.title}</h4>
-                  <p>{album.year ? `${album.year}` : `${album.songCount} songs`}</p>
+              )}
+              <button
+                className="big-featured-hover-play"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const albumTracks = allSongs.filter(
+                    (s) => s.album.toLowerCase() === mostPlayedAlbum.title.toLowerCase()
+                  );
+                  if (albumTracks[0]) onPlaySong?.(albumTracks[0], albumTracks);
+                }}
+                title="Play Album"
+                type="button"
+              >
+                <PlayIcon size={20} color="#000000" />
+              </button>
+            </div>
+
+            <div className="big-featured-meta">
+              <span className="big-featured-badge">Most Played Album</span>
+              <h3 className="big-featured-title">{mostPlayedAlbum.title}</h3>
+
+              <p className="big-featured-submeta">
+                {mostPlayedAlbum.year && `${mostPlayedAlbum.year} • `}
+                {mostPlayedAlbum.genre && `${mostPlayedAlbum.genre} • `}
+                {mostPlayedAlbum.songCount} {mostPlayedAlbum.songCount === 1 ? 'song' : 'songs'}
+              </p>
+
+              <p className="big-featured-desc">
+                {mostPlayedAlbum.description
+                  ? mostPlayedAlbum.description
+                  : `High-fidelity offline release by ${artist.name}. Click to explore the complete tracklist.`}
+              </p>
+
+              <div className="big-featured-actions">
+                <button
+                  className="btn-primary"
+                  style={{ backgroundColor: 'var(--accent-primary)', padding: '9px 18px', fontSize: '0.85rem' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const albumTracks = allSongs.filter(
+                      (s) => s.album.toLowerCase() === mostPlayedAlbum.title.toLowerCase()
+                    );
+                    if (albumTracks[0]) onPlaySong?.(albumTracks[0], albumTracks);
+                  }}
+                  type="button"
+                >
+                  <PlayIcon size={14} color="#ffffff" />
+                  <span>Play Album</span>
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '9px 18px', fontSize: '0.85rem' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectAlbum?.(mostPlayedAlbum);
+                  }}
+                  type="button"
+                >
+                  <span>View Album</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Top Songs List */}
+        <section className="artist-content-section">
+          <div className="section-header">
+            <h3 className="section-title">Top Songs</h3>
+          </div>
+
+          <div className="artist-top-songs-list">
+            {artistSongs.slice(0, 10).map((song) => (
+              <div
+                key={song.id}
+                className="artist-song-row"
+                onDoubleClick={() => onPlaySong?.(song, artistSongs)}
+                onContextMenu={(e) => onOpenTrackMenu?.(e, song)}
+              >
+                <div className="artist-song-thumb-wrap">
+                  {song.artworkUrl ? (
+                    <img src={song.artworkUrl} alt="" className="artist-song-thumb" />
+                  ) : (
+                    <div className="artist-song-thumb placeholder">
+                      <AlbumsIcon size={16} color="rgba(255,255,255,0.4)" />
+                    </div>
+                  )}
+                  <button
+                    className="artist-song-hover-play"
+                    onClick={() => onPlaySong?.(song, artistSongs)}
+                    title="Play"
+                    type="button"
+                  >
+                    <PlayIcon size={12} color="#ffffff" />
+                  </button>
+                </div>
+
+                <div className="artist-song-info">
+                  <span className="artist-song-title">{song.title}</span>
+                  <span className="artist-song-subtitle">
+                    {song.album} {song.year ? `• ${song.year}` : ''}
+                  </span>
+                </div>
+
+                <div className="artist-song-actions">
+                  <span className="artist-song-time">{formatDuration(song.duration)}</span>
+                  <button
+                    className="row-more-btn"
+                    onClick={(e) => onOpenTrackMenu?.(e, song)}
+                    title="More Actions"
+                    type="button"
+                  >
+                    <MoreHorizontalIcon size={16} />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </section>
-      )}
 
-      {/* All Tracks By Artist */}
-      <section style={{ position: 'relative', zIndex: 1 }}>
-        <h3 className="section-title" style={{ marginBottom: '16px' }}>Tracks</h3>
-        <div className="songs-table-header album-table-header">
-          <span className="col-num">#</span>
-          <span className="col-title">Title</span>
-          <span className="col-time">Time</span>
-        </div>
-
-        <div className="songs-list">
-          {artistSongs.map((song, idx) => (
-            <div
-              key={song.id}
-              className="song-row album-song-row"
-              onDoubleClick={() => onPlaySong?.(song, artistSongs)}
-            >
-              <div className="col-num">
-                <span className="track-index">{idx + 1}</span>
-                <button
-                  className="row-play-btn"
-                  onClick={() => onPlaySong?.(song, artistSongs)}
-                  title="Play"
-                  type="button"
-                >
-                  <PlayIcon size={12} color="var(--accent-primary)" />
-                </button>
-              </div>
-
-              <div className="col-title song-title-cell">
-                <span className="song-name-text">{song.title}</span>
-              </div>
-
-              <span className="col-time">{formatDuration(song.duration)}</span>
+        {/* 4. Albums Discography */}
+        {artistAlbums.length > 0 && (
+          <section className="artist-content-section">
+            <div className="section-header">
+              <h3 className="section-title">Albums</h3>
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="grid-cards">
+              {artistAlbums.map((album) => (
+                <div
+                  key={album.id}
+                  className="music-card"
+                  onClick={() => onSelectAlbum?.(album)}
+                >
+                  <div className="music-card-artwork">
+                    {album.artworkUrl ? (
+                      <img src={album.artworkUrl} alt={album.title} />
+                    ) : (
+                      <AlbumsIcon size={44} color="#353542" />
+                    )}
+                  </div>
+                  <div className="music-card-info">
+                    <h4>{album.title}</h4>
+                    <p>{album.year ? `${album.year}` : `${album.songCount} songs`}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

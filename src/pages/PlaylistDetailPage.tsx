@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Playlist, Song } from '../types/music';
-import { ArrowLeftIcon, PlayIcon, ShuffleIcon, PlusIcon } from '../components/icons/Icons';
+import { ArrowLeftIcon, PlayIcon, ShuffleIcon, MoreHorizontalIcon } from '../components/icons/Icons';
 
 interface PlaylistDetailPageProps {
   playlist: Playlist;
@@ -9,6 +9,7 @@ interface PlaylistDetailPageProps {
   onPlaySong?: (song: Song, playlistSongs?: Song[]) => void;
   onUpdatePlaylist: (updated: Playlist) => void;
   onDeletePlaylist: (playlistId: string) => void;
+  onOpenTrackMenu?: (e: React.MouseEvent, song: Song) => void;
 }
 
 function formatDuration(sec: number): string {
@@ -23,12 +24,12 @@ export function PlaylistDetailPage({
   onBack,
   onPlaySong,
   onUpdatePlaylist,
-  onDeletePlaylist
+  onDeletePlaylist,
+  onOpenTrackMenu
 }: PlaylistDetailPageProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(playlist.name);
 
-  // Map songIds to Song objects in order
   const playlistSongs = (playlist.songIds || [])
     .map((id) => allSongs.find((s) => s.id === id))
     .filter((s): s is Song => Boolean(s));
@@ -165,6 +166,7 @@ export function PlaylistDetailPage({
               key={`${song.id}-${idx}`}
               className="song-row"
               onDoubleClick={() => onPlaySong?.(song, playlistSongs)}
+              onContextMenu={(e) => onOpenTrackMenu?.(e, song)}
             >
               <div className="col-num">
                 <span className="track-index">{idx + 1}</span>
@@ -191,6 +193,14 @@ export function PlaylistDetailPage({
               <div className="col-time" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                 <span>{formatDuration(song.duration)}</span>
                 <button
+                  className="row-more-btn"
+                  onClick={(e) => onOpenTrackMenu?.(e, song)}
+                  title="More Actions"
+                  type="button"
+                >
+                  <MoreHorizontalIcon size={16} />
+                </button>
+                <button
                   className="row-remove-btn"
                   onClick={(e) => handleRemoveSong(e, song.id)}
                   title="Remove from playlist"
@@ -204,7 +214,7 @@ export function PlaylistDetailPage({
 
           {playlistSongs.length === 0 && (
             <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <p>This playlist is empty. Add songs from your library by clicking "+ Add to Playlist".</p>
+              <p>This playlist is empty. Add songs from your library by right-clicking any song and selecting "Add to Playlist".</p>
             </div>
           )}
         </div>

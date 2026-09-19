@@ -228,18 +228,26 @@ function registerIpcHandlers({
       console.log(`\n[Artist Scraper] 👥 Checking ${library.artists.length} artists...`);
       let updated = false;
 
-      for (const artist of library.artists) {
-        const needsPortrait = !artist.artworkUrl || !artist.artworkUrl.includes("artist_");
-        const needsBio = !artist.description;
+      // 3. Artist Portraits & Biographies
+    for (const artist of library.artists) {
+      // Check if artist doesn't have the wide banner yet
+      const needsBanner = !artist.artworkUrl || !artist.artworkUrl.includes("artist_banner_");
+      const needsBio = !artist.description;
 
-        if (needsPortrait || needsBio) {
-          const result = await metadataService.fetchArtistMetadata(artist.name);
-          if (result) {
-            if (result.artworkUrl) { artist.artworkUrl = result.artworkUrl; updated = true; }
-            if (result.description) { artist.description = result.description; updated = true; }
+      if (needsBanner || needsBio) {
+        const result = await metadataService.fetchArtistMetadata(artist.name);
+        if (result) {
+          if (result.artworkUrl) {
+            artist.artworkUrl = result.artworkUrl;
+            updated = true;
+          }
+          if (result.description) {
+            artist.description = result.description;
+            updated = true;
           }
         }
       }
+    }
 
       if (updated) fs.writeFileSync(dbFilePath, JSON.stringify(library, null, 2), "utf-8");
       return library;

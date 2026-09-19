@@ -50,6 +50,7 @@ export function SongsPage({ songs, onPlaySong, onOpenTrackMenu }: SongsPageProps
             key={song.id}
             className="song-row"
             onDoubleClick={() => onPlaySong?.(song)}
+            onContextMenu={(e) => onOpenTrackMenu?.(e, song)}
           >
             <div className="col-num">
               <span className="track-index">{idx + 1}</span>
@@ -77,15 +78,12 @@ export function SongsPage({ songs, onPlaySong, onOpenTrackMenu }: SongsPageProps
             <span className="col-artist">{song.artist}</span>
             <span className="col-album">{song.album}</span>
 
-            {/* Duration and 3-Dot Menu Button */}
+            {/* Time & 3-Dot More Button */}
             <div className="col-time" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
               <span>{formatDuration(song.duration)}</span>
               <button
                 className="row-more-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenTrackMenu?.(e, song);
-                }}
+                onClick={(e) => onOpenTrackMenu?.(e, song)}
                 title="More Actions"
                 type="button"
               >
